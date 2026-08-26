@@ -1,0 +1,247 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+  background: #14100c;
+  color: #f3e9d8;
+  min-height: 100vh;
+}
+
+#app { max-width: 480px; margin: 0 auto; padding-bottom: 90px; }
+
+/* ===== Topbar ===== */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: #1c1712;
+  border-bottom: 1px solid #2c2419;
+}
+.userbox { display: flex; align-items: center; gap: 10px; }
+.avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #b8860b, #6b4c1f);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: bold; color: #fff8e7;
+}
+.username { font-size: 14px; font-weight: 600; }
+.levelPill {
+  font-size: 11px;
+  background: #2c2419;
+  color: #d4af37;
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: inline-block;
+  margin-top: 2px;
+}
+#ton-connect-btn button {
+  background: #2b83f6 !important;
+  border-radius: 20px !important;
+}
+
+/* ===== Pages ===== */
+.page { padding: 16px; }
+.hidden { display: none !important; }
+
+.assets-card {
+  background: #1c1712;
+  border: 1px solid #3a2f20;
+  border-radius: 18px;
+  padding: 18px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.assets-label { font-size: 11px; letter-spacing: 2px; opacity: .6; }
+.assets-card h2 { font-size: 26px; color: #ffd700; margin: 6px 0 14px; }
+
+.wallets-row { display: flex; gap: 10px; }
+.wallet-box {
+  flex: 1;
+  background: #12100c;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wallet-label { font-size: 10px; opacity: .55; letter-spacing: 1px; }
+.wallet-value { font-size: 13px; font-weight: 600; color: #f3e9d8; }
+
+.coin-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px 0 20px;
+  position: relative;
+}
+.pending-badge {
+  background: rgba(85, 239, 196, 0.15);
+  color: #55efc4;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+.coin {
+  width: 190px; height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f7d774, #b8860b 60%, #6b4c1f 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 64px;
+  font-weight: 900;
+  color: #3a2a0f;
+  box-shadow: 0 0 0 6px #241d13, 0 10px 30px rgba(0,0,0,.5);
+  border: 3px solid #ffe9a8;
+}
+.coin.mining { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+.main-action-btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #d4af37, #8a6d1f);
+  color: #241d13;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.main-action-btn:disabled { opacity: .5; }
+.main-action-btn.claim { background: linear-gradient(135deg, #55efc4, #2e9e7f); }
+
+.hint { font-size: 13px; opacity: .65; margin-top: 6px; }
+.center { text-align: center; }
+
+.section-title { font-size: 18px; margin-bottom: 14px; }
+
+.card {
+  background: #1c1712;
+  border: 1px solid #3a2f20;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #2c2419;
+}
+.task-item:last-child { border-bottom: none; }
+.task-title { font-size: 14px; font-weight: 600; }
+.task-reward { font-size: 12px; color: #ffd700; margin-top: 2px; }
+.task-item button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #ffcf4d;
+  color: #241d13;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.task-done-label { color: #55efc4; font-size: 13px; font-weight: 700; }
+.task-cooldown { color: #8a7d68; font-size: 12px; font-weight: 600; direction: ltr; }
+
+.ref-link-box {
+  background: #12100c;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 12px;
+  word-break: break-all;
+  margin-bottom: 10px;
+  opacity: .85;
+}
+#copyRefBtn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #ffcf4d;
+  color: #241d13;
+  font-weight: 700;
+  cursor: pointer;
+}
+.stat-line { font-size: 14px; margin-top: 10px; }
+
+.loading { text-align: center; opacity: .6; margin-top: 30px; }
+.error { text-align: center; color: #ff7675; margin: 20px 16px; }
+
+/* ===== Bottom nav ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  background: #1c1712;
+  border-top: 1px solid #2c2419;
+  padding: 8px 0 14px;
+}
+.nav-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #8a7d68;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 20px;
+  cursor: pointer;
+}
+.nav-btn span { font-size: 11px; }
+.nav-btn.active { color: #ffd700; }
+
+/* ===== Miner (levels) ===== */
+.miner-summary { margin-bottom: 14px; }
+.miner-next-box {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #2c2419;
+}
+#minerUpgradeBtn {
+  margin-top: 8px;
+  background: #ffd700;
+}
+#minerUpgradeBtn:disabled {
+  opacity: .5;
+  cursor: default;
+}
+.levels-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 90px; /* مساحة فوق الـ bottom nav */
+}
+.level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #1c1712;
+  border: 1px solid #2c2419;
+}
+.level-row.unlocked {
+  border-color: #ffd70055;
+}
+.level-row.current {
+  border-color: #ffd700;
+  background: #2a2213;
+}
+.level-row .level-num { font-weight: 700; min-width: 60px; }
+.level-row .level-rate { font-size: 12px; color: #8a7d68; flex: 1; text-align: center; }
+.level-row .level-price { font-size: 12px; color: #ffd700; min-width: 70px; text-align: left; }
+.level-row .level-check { color: #4dd28c; min-width: 20px; text-align: left; }

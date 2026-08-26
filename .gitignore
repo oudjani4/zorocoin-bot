@@ -1,0 +1,16 @@
+# أسرار البيئة - لا يترفع أبدًا (BOT_TOKEN, DATABASE_URL, DISTRIBUTION_WALLET_MNEMONIC...)
+.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# لوجات وملفات ناتجة عن التشغيل الفعلي - مش جزء من الكود
+scripts/distribution.log
+scripts/distribution_list_*.csv
+
+# ملفات نظام التشغيل
+.DS_Store
+Thumbs.db
