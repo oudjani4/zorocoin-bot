@@ -3,7 +3,7 @@ tg.ready();
 tg.expand();
 
 // ⚠️ عدّل الرابط ده بعد ما ترفع الـ backend فعليًا
-const API_BASE = "https://your-backend-domain.com";
+const API_BASE = "https://zorocoin-bot-production.up.railway.app";
 // ⚠️ عدّل رابط المانيفست بعد النشر
 const MANIFEST_URL = "https://yourdomain.com/webapp/tonconnect-manifest.json";
 
