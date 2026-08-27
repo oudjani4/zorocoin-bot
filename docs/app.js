@@ -195,7 +195,7 @@ function render(data) {
   if (levelsListLoaded) renderLevelsList(data.level);
 
   // ---- الإحالة ----
-  const botUsername = "YourBotUsername"; // ⚠️ عدّله لاسم يوزر البوت بتاعك
+  const botUsername = "zorrocoin_bot"; // ⚠️ عدّله لاسم يوزر البوت بتاعك
   const refLink = `https://t.me/${botUsername}?startapp=${data.referral_code}`;
   document.getElementById("refLinkText").textContent = refLink;
   window._refLink = refLink;
