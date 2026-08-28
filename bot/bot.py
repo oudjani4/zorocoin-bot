@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
@@ -21,15 +22,9 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def start_handler(message: types.Message):
-    # لو المستخدم جه من رابط إحالة زي t.me/YourBot?start=CODE أو ?startapp=CODE
-    # هنمرر الكود للـ Mini App تلقائيًا عن طريق start_param بتاع الـ WebApp
     parts = message.text.split(maxsplit=1)
     referral_code = parts[1] if len(parts) > 1 else None
 
-    # ملاحظة: start_param بيتوصل تلقائي بس لو المستخدم فتح الرابط بصيغة
-    # t.me/YourBot?startapp=CODE مباشرة. أما لما بنفتح الـ WebApp من زرار
-    # جوه شات البوت، لازم نحط الكود في رابط الـ Mini App نفسه كـ query param
-    # ونقرأه في الجافاسكريبت (URLSearchParams) كـ fallback.
     webapp_url = WEBAPP_URL
     if referral_code:
         sep = "&" if "?" in webapp_url else "?"
@@ -65,12 +60,28 @@ async def fallback_handler(message: types.Message):
     await message.answer("استخدم الزرار تحت عشان تفتح التطبيق وتبدأ التجميع:", reply_markup=keyboard)
 
 
+async def health_check(request):
+    return web.Response(text="OK")
+
+
+async def start_web_server():
+    port = int(os.getenv("PORT", 8080))
+    app = web.Application()
+    app.router.add_get("/", health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logging.info(f"Health check server running on port {port}")
+
+
 async def main():
     if not BOT_TOKEN:
         raise RuntimeError("BOT_TOKEN غير موجود في ملف .env")
     if not WEBAPP_URL or not WEBAPP_URL.startswith("https://"):
-        raise RuntimeError("WEBAPP_URL لازم يكون رابط HTTPS صحيح (استخدم ngrok وقت التجربة)")
+        raise RuntimeError("WEBAPP_URL لازم يكون رابط HTTPS صحيح")
 
+    await start_web_server()
     await dp.start_polling(bot)
 
 
