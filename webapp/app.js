@@ -229,14 +229,25 @@ async function handleTaskClick(taskId, channel, itemEl) {
   const username = channel.replace("@", "").replace("https://t.me/", "");
   tg.openTelegramLink(`https://t.me/${username}`);
 
-  try {
-    const result = await apiPost(`/api/claim-task/${taskId}`, {});
-    tg.HapticFeedback?.notificationOccurred("success");
-    flyCoinsToBalance(itemEl);
-    await refreshState();
-  } catch (e) {
-    showError(e.message);
-  }
+  const tryClaim = async () => {
+    document.removeEventListener("visibilitychange", onVisible);
+    try {
+      const result = await apiPost(`/api/claim-task/${taskId}`, {});
+      tg.HapticFeedback?.notificationOccurred("success");
+      flyCoinsToBalance(itemEl);
+      await refreshState();
+    } catch (e) {
+      showError(e.message);
+    }
+  };
+
+  const onVisible = () => {
+    if (document.visibilityState === "visible") {
+      setTimeout(tryClaim, 400);
+    }
+  };
+
+  document.addEventListener("visibilitychange", onVisible);
 }
 
 // ---------- Main action button ----------
