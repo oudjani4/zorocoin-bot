@@ -76,7 +76,7 @@ async def on_startup():
         result = await db.execute(select(RequiredTask))
         if not result.scalars().first():
             for ch in REQUIRED_CHANNELS_ENV:
-                db.add(RequiredTask(channel_username=ch, title=f"اشترك في {ch}", reward_amount=10))
+                db.add(RequiredTask(channel_username=ch, title=f"اشترك في {ch}", reward_amount=20))
             await db.commit()
 
 

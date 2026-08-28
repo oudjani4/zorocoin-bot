@@ -3,7 +3,7 @@ import logging
 import os
 
 from aiohttp import web
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart
 from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
@@ -20,6 +20,30 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 
+
+async def check_subscription(bot, user_id: int) -> list:
+    """يرجع لائحة القنوات اللي المستخدم ماشي مشترك فيها"""
+    not_joined = []
+    for channel in REQUIRED_CHANNELS:
+        try:
+            member = await bot.get_chat_member(chat_id=channel, user_id=user_id)
+            if member.status in ("left", "kicked"):
+                not_joined.append(channel)
+        except Exception as e:
+            print(f"Error checking {channel}: {e}")
+            not_joined.append(channel)
+    return not_joined
+
+
+def build_join_keyboard(missing_channels: list) -> InlineKeyboardMarkup:
+    buttons = []
+    for ch in missing_channels:
+        username = ch.lstrip("@")
+        buttons.append([InlineKeyboardButton(text=f"➕ انضم لـ {ch}", url=f"https://t.me/{username}")])
+    buttons.append([InlineKeyboardButton(text="✅ تحققت، كمّل", callback_data="check_sub")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 @dp.message(CommandStart())
 async def start_handler(message: types.Message):
     parts = message.text.split(maxsplit=1)
@@ -30,22 +54,41 @@ async def start_handler(message: types.Message):
         sep = "&" if "?" in webapp_url else "?"
         webapp_url = f"{webapp_url}{sep}ref={referral_code}"
 
+    if REQUIRED_CHANNELS:
+        missing = await check_subscription(message.bot, message.from_user.id)
+        if missing:
+            await message.answer(
+                "قبل ما تقدر تستخدم البوت، خاصك تنضم لهاد القنوات:",
+                reply_markup=build_join_keyboard(missing),
+            )
+            return
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🚀 افتح تطبيق Zoro Airdrop", web_app=WebAppInfo(url=webapp_url))]
         ]
     )
-
-    channels_text = ""
-    if REQUIRED_CHANNELS:
-        channels_list = "\n".join(f"• {c}" for c in REQUIRED_CHANNELS)
-        channels_text = f"\n\nقبل ما تقدر تجمع نقاط، لازم تكون مشترك في:\n{channels_list}"
-
     await message.answer(
         f"أهلاً بيك في Zoro Airdrop! 🎉\n"
-        f"اربط محفظتك وابدأ تجمع نقاط دلوقتي، ولما التوكن يتطلق هيتوزع عليك حسب رصيدك."
-        f"{channels_text}\n\n"
+        f"اربط محفظتك وابدأ تجمع نقاط دلوقتي، ولما التوكن يتطلق هيتوزع عليك حسب رصيدك.\n\n"
         f"اضغط الزرار تحت عشان تفتح التطبيق:",
+        reply_markup=keyboard,
+    )
+
+
+@dp.callback_query(F.data == "check_sub")
+async def check_sub_callback(callback: types.CallbackQuery):
+    missing = await check_subscription(callback.bot, callback.from_user.id)
+    if missing:
+        await callback.answer("مازال ناقصك تنضم لبعض القنوات ⚠️", show_alert=True)
+        return
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 افتح تطبيق Zoro Airdrop", web_app=WebAppInfo(url=WEBAPP_URL))]
+        ]
+    )
+    await callback.message.edit_text(
+        "تمام! ✅ دابا تقدر تفتح التطبيق:",
         reply_markup=keyboard,
     )
 
