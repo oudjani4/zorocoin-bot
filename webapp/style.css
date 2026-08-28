@@ -245,3 +245,27 @@ body {
 .level-row .level-rate { font-size: 12px; color: #8a7d68; flex: 1; text-align: center; }
 .level-row .level-price { font-size: 12px; color: #ffd700; min-width: 70px; text-align: left; }
 .level-row .level-check { color: #4dd28c; min-width: 20px; text-align: left; }
+
+/* عملة ذهبية تطير للرصيد عند إتمام مهمة */
+.flying-coin {
+  position: fixed;
+  z-index: 9999;
+  font-size: 22px;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.9s ease-in;
+}
+
+.flying-coin.fly {
+  opacity: 0;
+}
+
+#poolBalance.bump {
+  animation: balanceBump 0.4s ease;
+}
+
+@keyframes balanceBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); color: #ffd700; }
+  100% { transform: scale(1); }
+}

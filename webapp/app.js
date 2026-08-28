@@ -232,6 +232,7 @@ async function handleTaskClick(taskId, channel, itemEl) {
   try {
     const result = await apiPost(`/api/claim-task/${taskId}`, {});
     tg.HapticFeedback?.notificationOccurred("success");
+    flyCoinsToBalance(itemEl);
     await refreshState();
   } catch (e) {
     showError(e.message);
@@ -371,3 +372,44 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     showError("تعذر الاتصال بالسيرفر: " + e.message);
   }
 })();
+
+// ---------- عملات ذهبية تطير من مكان المهمة إلى الرصيد ----------
+function flyCoinsToBalance(startEl, coinCount = 6) {
+  const targetEl = document.getElementById("poolBalance");
+  if (!startEl || !targetEl) return;
+
+  const startRect = startEl.getBoundingClientRect();
+  const targetRect = targetEl.getBoundingClientRect();
+
+  for (let i = 0; i < coinCount; i++) {
+    const coin = document.createElement("div");
+    coin.className = "flying-coin";
+    coin.textContent = "🪙";
+
+    const jitterX = (Math.random() - 0.5) * 40;
+    const jitterY = (Math.random() - 0.5) * 20;
+    const startX = startRect.left + startRect.width / 2 + jitterX;
+    const startY = startRect.top + startRect.height / 2 + jitterY;
+
+    coin.style.left = `${startX}px`;
+    coin.style.top = `${startY}px`;
+
+    document.body.appendChild(coin);
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const dx = targetRect.left + targetRect.width / 2 - startX;
+        const dy = targetRect.top + targetRect.height / 2 - startY;
+        coin.style.transform = `translate(${dx}px, ${dy}px) scale(0.3)`;
+        coin.classList.add("fly");
+      }, i * 60);
+    });
+
+    setTimeout(() => coin.remove(), 1000 + i * 60);
+  }
+
+  setTimeout(() => {
+    targetEl.classList.add("bump");
+    setTimeout(() => targetEl.classList.remove("bump"), 400);
+  }, 900 + coinCount * 60);
+}

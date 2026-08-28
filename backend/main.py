@@ -47,7 +47,7 @@ UPGRADE_REQUEST_TTL_MINUTES = int(os.getenv("UPGRADE_REQUEST_TTL_MINUTES", 30))
 # ---------------------------------------------------------------------------
 ZORO_TO_TON_RATE = float(os.getenv("ZORO_TO_TON_RATE", 500))  # 1 TON = كام ZORO
 MIN_WITHDRAWAL_TON = float(os.getenv("MIN_WITHDRAWAL_TON", 0.5))
-MIN_WITHDRAWAL_ZORO = round(MIN_WITHDRAWAL_TON * ZORO_TO_TON_RATE, 4)
+MIN_WITHDRAWAL_ZORO = float(os.getenv("MIN_WITHDRAWAL_ZORO", 600))
 
 
 def price_for_level_step(current_level: int) -> float:
