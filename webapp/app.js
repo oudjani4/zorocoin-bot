@@ -421,3 +421,29 @@ function flyCoinsToBalance(startEl, coinCount = 6) {
     setTimeout(() => targetEl.classList.remove("bump"), 400);
   }, 900 + coinCount * 60);
 }
+
+
+// ---- عملات ذهبية متطايرة من العملة ----
+function spawnZoroParticles() {
+  const wrap = document.querySelector(".coin-wrap");
+  if (!wrap) return;
+  for (let i = 0; i < 3; i++) {
+    const p = document.createElement("div");
+    p.className = "zoro-coin-particle";
+    p.textContent = "\ud83e\ude99";
+    const angle = (Math.random() * 140 - 70) * (Math.PI / 180);
+    const distance = 60 + Math.random() * 50;
+    const x = Math.sin(angle) * distance;
+    const y = -Math.cos(angle) * distance - 40;
+    p.style.setProperty("--fly-transform", `translate(${x}px, ${y}px) scale(1.1) rotate(${Math.random()*360}deg)`);
+    p.style.left = "50%";
+    p.style.top = "35%";
+    wrap.appendChild(p);
+    setTimeout(() => p.remove(), 1700);
+  }
+}
+setInterval(() => {
+  if (document.getElementById("coinVisual")?.classList.contains("mining")) {
+    spawnZoroParticles();
+  }
+}, 900);
