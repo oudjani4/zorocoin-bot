@@ -229,8 +229,14 @@ async def is_channel_member(channel_username: str, telegram_user_id: int) -> boo
     if not BOT_TOKEN:
         raise HTTPException(500, "BOT_TOKEN غير مضبوط على السيرفر")
 
+    # تحويل أي صيغة (رابط كامل / @username / username بدون @) إلى @username صحيح لتيليجرام
+    normalized = channel_username.strip()
+    normalized = normalized.replace("https://t.me/", "").replace("http://t.me/", "").replace("t.me/", "")
+    normalized = normalized.lstrip("@")
+    normalized = f"@{normalized}"
+
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
-    params = {"chat_id": channel_username, "user_id": telegram_user_id}
+    params = {"chat_id": normalized, "user_id": telegram_user_id}
 
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(url, params=params)
