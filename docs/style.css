@@ -88,18 +88,53 @@ body {
 .coin {
   width: 190px; height: 190px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #f7d774, #b8860b 60%, #6b4c1f 100%);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 64px;
-  font-weight: 900;
-  color: #3a2a0f;
+  background-image: url('assets/zorro-coin.png');
+  background-size: cover;
+  background-position: center;
   box-shadow: 0 0 0 6px #241d13, 0 10px 30px rgba(0,0,0,.5);
   border: 3px solid #ffe9a8;
+  position: relative;
+  z-index: 2;
 }
 .coin.mining { animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.03); }
+}
+
+/* توهج السيف */
+.coin-glow {
+  position: absolute;
+  width: 190px; height: 190px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(circle at 65% 25%, rgba(150,220,255,0.55) 0%, rgba(150,220,255,0) 55%);
+  animation: swordGlow 2s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+@keyframes swordGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+/* عملات ذهبية متطايرة */
+.zoro-coin-particle {
+  position: absolute;
+  font-size: 20px;
+  pointer-events: none;
+  z-index: 4;
+  animation: coinFly 1.6s ease-out forwards;
+}
+@keyframes coinFly {
+  0% {
+    transform: translate(0, 0) scale(0.6) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: var(--fly-transform);
+    opacity: 0;
+  }
 }
 
 .main-action-btn {
@@ -245,3 +280,27 @@ body {
 .level-row .level-rate { font-size: 12px; color: #8a7d68; flex: 1; text-align: center; }
 .level-row .level-price { font-size: 12px; color: #ffd700; min-width: 70px; text-align: left; }
 .level-row .level-check { color: #4dd28c; min-width: 20px; text-align: left; }
+
+/* عملة ذهبية تطير للرصيد عند إتمام مهمة */
+.flying-coin {
+  position: fixed;
+  z-index: 9999;
+  font-size: 22px;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.9s ease-in;
+}
+
+.flying-coin.fly {
+  opacity: 0;
+}
+
+#poolBalance.bump {
+  animation: balanceBump 0.4s ease;
+}
+
+@keyframes balanceBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); color: #ffd700; }
+  100% { transform: scale(1); }
+}

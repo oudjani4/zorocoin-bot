@@ -212,7 +212,7 @@ function renderTaskButtons() {
     if (!nextAt || now >= new Date(nextAt)) {
       actionEl.innerHTML = `<button data-task-id="${div.dataset.taskId}" data-channel="${div.dataset.channel}">انضمام</button>`;
       const btn = actionEl.querySelector("button");
-      btn.addEventListener("click", () => handleTaskClick(div.dataset.taskId, div.dataset.channel, div));
+      btn.addEventListener("click", () => handleTaskJoinClick(btn, div.dataset.taskId, div.dataset.channel, div));
     } else {
       const remaining = (new Date(nextAt) - now) / 1000;
       const h = Math.floor(remaining / 3600);
@@ -223,17 +223,26 @@ function renderTaskButtons() {
   });
 }
 
-// الضغط على "انضمام" بيفتح رابط القناة، وبعدين السيرفر بيتحقق فعليًا من
-// عضوية المستخدم في القناة (عبر Telegram Bot API) قبل ما يمنح المكافأة.
-async function handleTaskClick(taskId, channel, itemEl) {
+// المرحلة 1: الضغط على "انضمام" بيفتح رابط القناة، وبيحول الزرار لـ "تحقق الآن".
+function handleTaskJoinClick(btn, taskId, channel, itemEl) {
   const username = channel.replace("@", "").replace("https://t.me/", "");
   tg.openTelegramLink(`https://t.me/${username}`);
 
+  btn.textContent = "تحقق الآن ✅";
+  btn.classList.add("verify-mode");
+  btn.onclick = () => handleTaskVerifyClick(taskId, itemEl);
+}
+
+// المرحلة 2: الضغط على "تحقق الآن" بيتحقق فعليًا من العضوية عبر السيرفر
+// (Telegram Bot API) قبل ما يمنح المكافأة.
+async function handleTaskVerifyClick(taskId, itemEl) {
   try {
     const result = await apiPost(`/api/claim-task/${taskId}`, {});
     tg.HapticFeedback?.notificationOccurred("success");
+    flyCoinsToBalance(itemEl);
     await refreshState();
   } catch (e) {
+    tg.HapticFeedback?.notificationOccurred("error");
     showError(e.message);
   }
 }
@@ -371,3 +380,70 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     showError("تعذر الاتصال بالسيرفر: " + e.message);
   }
 })();
+
+// ---------- عملات ذهبية تطير من مكان المهمة إلى الرصيد ----------
+function flyCoinsToBalance(startEl, coinCount = 6) {
+  const targetEl = document.getElementById("poolBalance");
+  if (!startEl || !targetEl) return;
+
+  const startRect = startEl.getBoundingClientRect();
+  const targetRect = targetEl.getBoundingClientRect();
+
+  for (let i = 0; i < coinCount; i++) {
+    const coin = document.createElement("div");
+    coin.className = "flying-coin";
+    coin.textContent = "🪙";
+
+    const jitterX = (Math.random() - 0.5) * 40;
+    const jitterY = (Math.random() - 0.5) * 20;
+    const startX = startRect.left + startRect.width / 2 + jitterX;
+    const startY = startRect.top + startRect.height / 2 + jitterY;
+
+    coin.style.left = `${startX}px`;
+    coin.style.top = `${startY}px`;
+
+    document.body.appendChild(coin);
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const dx = targetRect.left + targetRect.width / 2 - startX;
+        const dy = targetRect.top + targetRect.height / 2 - startY;
+        coin.style.transform = `translate(${dx}px, ${dy}px) scale(0.3)`;
+        coin.classList.add("fly");
+      }, i * 60);
+    });
+
+    setTimeout(() => coin.remove(), 1000 + i * 60);
+  }
+
+  setTimeout(() => {
+    targetEl.classList.add("bump");
+    setTimeout(() => targetEl.classList.remove("bump"), 400);
+  }, 900 + coinCount * 60);
+}
+
+
+// ---- عملات ذهبية متطايرة من العملة ----
+function spawnZoroParticles() {
+  const wrap = document.querySelector(".coin-wrap");
+  if (!wrap) return;
+  for (let i = 0; i < 3; i++) {
+    const p = document.createElement("div");
+    p.className = "zoro-coin-particle";
+    p.textContent = "\ud83e\ude99";
+    const angle = (Math.random() * 140 - 70) * (Math.PI / 180);
+    const distance = 60 + Math.random() * 50;
+    const x = Math.sin(angle) * distance;
+    const y = -Math.cos(angle) * distance - 40;
+    p.style.setProperty("--fly-transform", `translate(${x}px, ${y}px) scale(1.1) rotate(${Math.random()*360}deg)`);
+    p.style.left = "50%";
+    p.style.top = "35%";
+    wrap.appendChild(p);
+    setTimeout(() => p.remove(), 1700);
+  }
+}
+setInterval(() => {
+  if (document.getElementById("coinVisual")?.classList.contains("mining")) {
+    spawnZoroParticles();
+  }
+}, 900);
