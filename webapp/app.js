@@ -35,7 +35,14 @@ async function apiPost(path, body) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "خطأ غير معروف" }));
-    throw new Error(err.detail || "خطأ في الطلب");
+    const detail = err.detail;
+    if (detail && typeof detail === "object" && detail.error === "subscription_required") {
+      const gateError = new Error(detail.message || "لازم تنضم للقنوات المطلوبة");
+      gateError.subscriptionRequired = true;
+      gateError.missingChannels = detail.missing_channels || [];
+      throw gateError;
+    }
+    throw new Error(typeof detail === "string" ? detail : "خطأ في الطلب");
   }
   return res.json();
 }
@@ -239,6 +246,7 @@ async function handleTaskVerifyClick(taskId, itemEl) {
   try {
     const result = await apiPost(`/api/claim-task/${taskId}`, {});
     tg.HapticFeedback?.notificationOccurred("success");
+    playCoinSound();
     flyCoinsToBalance(itemEl);
     await refreshState();
   } catch (e) {
@@ -255,6 +263,7 @@ document.getElementById("mainActionBtn").addEventListener("click", async () => {
     } else {
       const result = await apiPost("/api/mine/claim", {});
       tg.HapticFeedback?.notificationOccurred("success");
+      playCoinSound();
     }
     await refreshState();
   } catch (e) {
@@ -377,7 +386,11 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     document.getElementById("refBonusLabel").textContent = refStats.bonus_per_referral;
   } catch (e) {
     document.getElementById("loadingMsg").classList.add("hidden");
-    showError("تعذر الاتصال بالسيرفر: " + e.message);
+    if (e.subscriptionRequired) {
+      showGateScreen(e.missingChannels);
+    } else {
+      showError("تعذر الاتصال بالسيرفر: " + e.message);
+    }
   }
 })();
 
@@ -447,3 +460,70 @@ setInterval(() => {
     spawnZoroParticles();
   }
 }, 900);
+
+// ---------- شاشة الاشتراك الإجباري ----------
+function showGateScreen(missingChannels) {
+  document.getElementById("loadingMsg").classList.add("hidden");
+  document.querySelectorAll(".page").forEach((p) => p.classList.add("hidden"));
+  document.querySelector(".bottom-nav")?.classList.add("hidden");
+  document.querySelector(".topbar")?.classList.add("hidden");
+
+  const gatePage = document.getElementById("page-gate");
+  gatePage.classList.remove("hidden");
+
+  const list = document.getElementById("gateChannelsList");
+  list.innerHTML = "";
+  missingChannels.forEach((ch) => {
+    const username = ch.replace(/^@/, "").replace(/^https?:\/\/t\.me\//, "");
+    const a = document.createElement("a");
+    a.href = `https://t.me/${username}`;
+    a.target = "_blank";
+    a.className = "gate-channel-btn";
+    a.textContent = `➕ انضم لـ @${username}`;
+    list.appendChild(a);
+  });
+}
+
+document.getElementById("gateRecheckBtn")?.addEventListener("click", async () => {
+  const statusEl = document.getElementById("gateStatus");
+  statusEl.classList.remove("hidden");
+  statusEl.textContent = "جاري التحقق...";
+  try {
+    await refreshState();
+    document.getElementById("page-gate").classList.add("hidden");
+    document.querySelector(".bottom-nav")?.classList.remove("hidden");
+    document.querySelector(".topbar")?.classList.remove("hidden");
+    statusEl.classList.add("hidden");
+  } catch (e) {
+    if (e.subscriptionRequired) {
+      showGateScreen(e.missingChannels);
+      statusEl.textContent = "لسه ناقصك قنوات ⚠️";
+    } else {
+      statusEl.textContent = "تعذر التحقق: " + e.message;
+    }
+  }
+});
+
+// ---------- نظام صوت النقود (تفعيل/تعطيل + تشغيل) ----------
+const coinAudio = new Audio("assets/cha-ching.mp3");
+let soundEnabled = localStorage.getItem("zoro_sound_enabled");
+soundEnabled = soundEnabled === null ? true : soundEnabled === "true";
+
+function playCoinSound() {
+  if (!soundEnabled) return;
+  try {
+    coinAudio.currentTime = 0;
+    coinAudio.play().catch(() => {});
+  } catch (e) {}
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const toggle = document.getElementById("soundToggle");
+  if (toggle) {
+    toggle.checked = soundEnabled;
+    toggle.addEventListener("change", () => {
+      soundEnabled = toggle.checked;
+      localStorage.setItem("zoro_sound_enabled", soundEnabled);
+    });
+  }
+});
