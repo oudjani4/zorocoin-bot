@@ -213,6 +213,9 @@ let taskCooldownTimer = null;
 function renderTaskButtons() {
   document.querySelectorAll(".task-item").forEach((div) => {
     const actionEl = div.querySelector(".task-action");
+    // لو المهمة حالياً بوضع "تحقق الآن" (بعد ضغط انضمام)، ما نلمسها حتى ما نكسر الزرار
+    if (actionEl.querySelector("button.verify-mode")) return;
+
     const nextAt = div.dataset.nextAvailableAt;
     const now = new Date();
 
