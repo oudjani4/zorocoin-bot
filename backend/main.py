@@ -150,25 +150,6 @@ async def me(
     ref_code = payload.referral_code if payload else None
     user = await get_or_create_user(db, tg_user, referral_code_used=ref_code)
 
-    # ---- تحقق إجباري: المستخدم لازم يكون مشترك في قناة واحدة على الأقل ----
-    if REQUIRED_CHANNELS_ENV:
-        missing_channels = []
-        joined_any = False
-        for ch in REQUIRED_CHANNELS_ENV:
-            if await is_channel_member(ch, user.telegram_id):
-                joined_any = True
-            else:
-                missing_channels.append(ch)
-        if not joined_any:
-            raise HTTPException(
-                403,
-                detail={
-                    "error": "subscription_required",
-                    "message": "اشترك في قناة واحدة على الأقل من هذه القنوات",
-                    "missing_channels": missing_channels,
-                },
-            )
-
     tasks_result = await db.execute(select(RequiredTask).where(RequiredTask.is_active == True))
     tasks = tasks_result.scalars().all()
 
