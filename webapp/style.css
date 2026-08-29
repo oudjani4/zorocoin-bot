@@ -374,3 +374,22 @@ body {
 .switch input:checked + .slider::before {
   transform: translateX(20px);
 }
+
+
+/* نص عائم +X ZORO بعد نجاح المهمة */
+.floating-reward {
+  position: fixed;
+  transform: translate(-50%, 0);
+  color: #ffd700;
+  font-weight: 900;
+  font-size: 18px;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8), 0 2px 4px rgba(0,0,0,0.6);
+  pointer-events: none;
+  z-index: 999;
+  animation: floatUpFade 1.4s ease-out forwards;
+}
+@keyframes floatUpFade {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
+  15% { opacity: 1; transform: translate(-50%, -10px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -70px) scale(1); }
+}

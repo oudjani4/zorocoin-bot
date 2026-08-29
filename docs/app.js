@@ -251,11 +251,25 @@ async function handleTaskVerifyClick(taskId, itemEl) {
     tg.HapticFeedback?.notificationOccurred("success");
     playCoinSound();
     flyCoinsToBalance(itemEl);
+    showFloatingReward(itemEl, result.reward);
     await refreshState();
   } catch (e) {
     tg.HapticFeedback?.notificationOccurred("error");
     showError(e.message);
   }
+}
+
+// ---- نص عائم "+X ZORO" يطلع فوق مكان المهمة بعد نجاح التحقق ----
+function showFloatingReward(startEl, amount) {
+  if (!startEl) return;
+  const rect = startEl.getBoundingClientRect();
+  const el = document.createElement("div");
+  el.className = "floating-reward";
+  el.textContent = `+${amount} ZORO`;
+  el.style.left = `${rect.left + rect.width / 2}px`;
+  el.style.top = `${rect.top}px`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1400);
 }
 
 // ---------- Main action button ----------
