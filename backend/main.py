@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, init_db, AsyncSessionLocal
-from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment
+from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest
 from auth import get_current_telegram_user
 
 load_dotenv()
@@ -516,4 +516,49 @@ async def verify_level_upgrade(
         "new_level": user.level,
         "mining_rate_per_hour": user.mining_rate_per_hour,
         "tx_hash": tx_hash,
+    }
+
+
+class WithdrawPayload(BaseModel):
+    amount_zoro: float
+
+
+@app.post("/api/withdraw")
+async def request_withdraw(
+    payload: WithdrawPayload,
+    tg_user: dict = Depends(get_current_telegram_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await get_or_create_user(db, tg_user)
+
+    if not user.wallet_address:
+        raise HTTPException(400, "لازم تربط محفظتك أولاً")
+
+    amount = payload.amount_zoro
+    if amount <= 0:
+        raise HTTPException(400, "المبلغ غير صالح")
+    if amount < MIN_WITHDRAWAL_ZORO:
+        raise HTTPException(400, f"الحد الأدنى للسحب هو {MIN_WITHDRAWAL_ZORO} ZORO")
+    if amount > user.holding_balance:
+        raise HTTPException(400, "رصيدك غير كافٍ لهذا السحب")
+
+    user.holding_balance -= amount
+    amount_ton = amount / ZORO_TO_TON_RATE
+
+    withdrawal = WithdrawalRequest(
+        user_id=user.id,
+        wallet_address=user.wallet_address,
+        amount_zoro=amount,
+        amount_ton=amount_ton,
+        status="pending",
+    )
+    db.add(withdrawal)
+    await db.commit()
+
+    return {
+        "success": True,
+        "message": "تم إرسال طلب السحب، بانتظار المراجعة",
+        "amount_zoro": amount,
+        "amount_ton": round(amount_ton, 4),
+        "new_holding_balance": round(user.holding_balance, 4),
     }

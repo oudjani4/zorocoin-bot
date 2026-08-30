@@ -145,3 +145,18 @@ class ProcessedPayment(Base):
     nonce: Mapped[str] = mapped_column(String(32))
     amount_ton: Mapped[float] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class WithdrawalRequest(Base):
+    """طلب سحب رصيد ZORO الى محفظة TON - يحتاج موافقة يدوية من الأدمن."""
+    __tablename__ = "withdrawal_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    wallet_address: Mapped[str] = mapped_column(String(255))
+    amount_zoro: Mapped[float] = mapped_column(Float)
+    amount_ton: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending / approved / rejected / paid
+    tx_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
