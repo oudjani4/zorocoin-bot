@@ -119,6 +119,8 @@ function render(data) {
       ? `محتاج ${remaining.toFixed(2)} ZORO كمان عشان توصل للحد الأدنى للسحب (${data.min_withdrawal_zoro})`
       : `✅ رصيدك وصل للحد الأدنى للسحب (${data.min_withdrawal_zoro} ZORO)`;
 
+  updateWalletStatus(data.wallet_address);
+
   // ---- زرار الفعل الرئيسي (START / CLAIM) ----
   const btn = document.getElementById("mainActionBtn");
   const coin = document.getElementById("coinVisual");
@@ -573,3 +575,25 @@ document.getElementById("withdrawBtn").addEventListener("click", async () => {
     btn.disabled = false;
   }
 });
+
+// ---------- Wallet status + withdraw activation ----------
+function updateWalletStatus(walletAddress) {
+  const dot = document.getElementById("walletStatusDot");
+  const text = document.getElementById("walletStatusText");
+  const btn = document.getElementById("withdrawBtn");
+  const input = document.getElementById("withdrawAmount");
+
+  if (!dot || !text || !btn || !input) return;
+
+  if (walletAddress) {
+    dot.classList.add("status-active");
+    text.textContent = "✅ المحفظة مربوطة";
+    btn.disabled = false;
+    input.disabled = false;
+  } else {
+    dot.classList.remove("status-active");
+    text.textContent = "⚠️ اربط محفظتك أولاً من الأعلى قبل السحب";
+    btn.disabled = true;
+    input.disabled = true;
+  }
+}
