@@ -215,10 +215,21 @@ async def link_wallet(
         raise HTTPException(400, "عنوان محفظة TON غير صالح")
 
     user = await get_or_create_user(db, tg_user)
+
+    # المحفظة تُربط مرة واحدة فقط ولا يمكن تغييرها بعد ذلك، حماية من محاولات
+    # تحويل الأرباح لمحفظة مختلفة بعد التعدين أو الإحالات.
+    if user.wallet_address:
+        if user.wallet_address == address:
+            return {"ok": True, "wallet_address": user.wallet_address, "already_linked": True}
+        raise HTTPException(
+            400,
+            "محفظتك مربوطة بالفعل ولا يمكن تغييرها. تواصل مع الدعم لو فيه مشكلة."
+        )
+
     user.wallet_address = address
     user.wallet_linked_at = datetime.utcnow()
     await db.commit()
-    return {"ok": True, "wallet_address": user.wallet_address}
+    return {"ok": True, "wallet_address": user.wallet_address, "already_linked": False}
 
 
 async def is_channel_member(channel_username: str, telegram_user_id: int) -> bool:
