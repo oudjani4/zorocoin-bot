@@ -98,11 +98,6 @@
         <p class="stat-line">رصيد Holding: <b id="profileHolding">0</b></p>
         <p class="stat-line">الحد الأدنى للسحب: <b id="profileMinWithdrawal">-</b></p>
         <p class="hint" id="profileExchangeRate"></p>
-        <div class="withdraw-box">
-          <input type="number" id="withdrawAmount" placeholder="كمية ZORO للسحب" step="0.01" />
-          <button id="withdrawBtn" class="btn">💸 سحب</button>
-          <p class="hint" id="withdrawStatus"></p>
-        </div>
         <div class="stat-line sound-toggle-row">
           <span>صوت النقود 🔊</span>
           <label class="switch">
@@ -110,6 +105,13 @@
             <span class="slider"></span>
           </label>
         </div>
+      </div>
+
+      <div class="card withdraw-card">
+        <h3 class="section-title">💸 سحب الرصيد</h3>
+        <input type="number" id="withdrawAmount" placeholder="كمية ZORO للسحب" step="0.01" />
+        <button id="withdrawBtn" class="btn withdraw-btn-big">💸 سحب الآن</button>
+        <p class="hint" id="withdrawStatus"></p>
       </div>
     </section>
 
