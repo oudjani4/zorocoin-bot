@@ -544,3 +544,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// ---------- Withdraw ----------
+document.getElementById("withdrawBtn").addEventListener("click", async () => {
+  const input = document.getElementById("withdrawAmount");
+  const statusEl = document.getElementById("withdrawStatus");
+  const amount = parseFloat(input.value);
+
+  statusEl.textContent = "";
+
+  if (!amount || amount <= 0) {
+    statusEl.textContent = "❌ اكتب مبلغ صحيح";
+    return;
+  }
+
+  const btn = document.getElementById("withdrawBtn");
+  btn.disabled = true;
+  statusEl.textContent = "⏳ جاري تنفيذ التحويل...";
+
+  try {
+    const data = await apiPost("/api/withdraw", { amount_zoro: amount });
+    statusEl.textContent = `✅ تم تحويل ${data.amount_ton} TON لمحفظتك بنجاح`;
+    input.value = "";
+    await refreshState();
+  } catch (e) {
+    statusEl.textContent = "❌ " + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
