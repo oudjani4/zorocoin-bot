@@ -81,7 +81,7 @@ async def on_startup():
 
 
 def gen_referral_code() -> str:
-    return "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    return "".join(random.choices(string.digits, k=8))
 
 
 def is_valid_ton_address(address: str) -> bool:
