@@ -80,6 +80,30 @@ async def on_startup():
             await db.commit()
 
 
+
+@app.post("/api/admin/fix-referral-code")
+async def fix_referral_code(
+    secret: str,
+    username: str,
+    db: AsyncSession = Depends(get_db),
+):
+    if secret != "zoro-temp-fix-2026":
+        raise HTTPException(403, "غير مصرح")
+
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(404, "المستخدم غير موجود")
+
+    new_code = gen_referral_code()
+    while (await db.execute(select(User).where(User.referral_code == new_code))).scalar_one_or_none():
+        new_code = gen_referral_code()
+
+    user.referral_code = new_code
+    await db.commit()
+    return {"ok": True, "new_referral_code": new_code}
+
+
 def gen_referral_code() -> str:
     return "".join(random.choices(string.digits, k=8))
 
