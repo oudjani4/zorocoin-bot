@@ -107,6 +107,7 @@ function render(data) {
 
   document.getElementById("profileUsername").textContent = data.username || "-";
   document.getElementById("profileWallet").textContent = data.wallet_address || "غير مربوطة";
+  document.getElementById("manualDisconnectBtn").classList.toggle("hidden", !data.wallet_address);
   document.getElementById("profilePool").textContent = data.pool_balance.toFixed(4);
   document.getElementById("profileHolding").textContent = data.holding_balance;
   document.getElementById("profileMinWithdrawal").textContent = `${data.min_withdrawal_zoro} ZORO`;
@@ -597,3 +598,14 @@ function updateWalletStatus(walletAddress) {
     input.disabled = true;
   }
 }
+
+// ---------- زر قطع الاتصال اليدوي (بديل موثوق لقائمة TonConnect المدمجة) ----------
+document.getElementById("manualDisconnectBtn")?.addEventListener("click", async () => {
+  try {
+    await tonConnectUI.disconnect();
+    tg.HapticFeedback?.notificationOccurred("success");
+    await refreshState();
+  } catch (e) {
+    showError(e.message || "فشل قطع الاتصال");
+  }
+});
