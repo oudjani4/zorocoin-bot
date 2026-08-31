@@ -313,7 +313,7 @@ function buildCommentPayload(comment) {
   const cell = new TonWeb.boc.Cell();
   cell.bits.writeUint(0, 32); // op = 0 يعني "تعليق نصي بسيط"
   cell.bits.writeBytes(new TextEncoder().encode(comment));
-  return TonWeb.utils.bytesToBase64(cell.toBoc(false));
+  return TonWeb.utils.bytesToBase64(cell.toBoc());
 }
 
 async function pollVerifyUpgrade(nonce, statusEl, attempts = 12, delayMs = 5000) {
