@@ -13,6 +13,9 @@ const initData = tg.initData;
 const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
   manifestUrl: MANIFEST_URL,
   buttonRootId: "ton-connect-btn",
+  actionsConfiguration: {
+    twaReturnUrl: "https://t.me/zorrocoin_bot"
+  },
 });
 
 tonConnectUI.onStatusChange(async (wallet) => {
@@ -107,7 +110,6 @@ function render(data) {
 
   document.getElementById("profileUsername").textContent = data.username || "-";
   document.getElementById("profileWallet").textContent = data.wallet_address || "غير مربوطة";
-  document.getElementById("manualDisconnectBtn").classList.toggle("hidden", !data.wallet_address);
   document.getElementById("profilePool").textContent = data.pool_balance.toFixed(4);
   document.getElementById("profileHolding").textContent = data.holding_balance;
   document.getElementById("profileMinWithdrawal").textContent = `${data.min_withdrawal_zoro} ZORO`;
@@ -119,8 +121,6 @@ function render(data) {
     remaining > 0
       ? `محتاج ${remaining.toFixed(2)} ZORO كمان عشان توصل للحد الأدنى للسحب (${data.min_withdrawal_zoro})`
       : `✅ رصيدك وصل للحد الأدنى للسحب (${data.min_withdrawal_zoro} ZORO)`;
-
-  updateWalletStatus(data.wallet_address);
 
   // ---- زرار الفعل الرئيسي (START / CLAIM) ----
   const btn = document.getElementById("mainActionBtn");
@@ -216,9 +216,6 @@ let taskCooldownTimer = null;
 function renderTaskButtons() {
   document.querySelectorAll(".task-item").forEach((div) => {
     const actionEl = div.querySelector(".task-action");
-    // لو المهمة حالياً بوضع "تحقق الآن" (بعد ضغط انضمام)، ما نلمسها حتى ما نكسر الزرار
-    if (actionEl.querySelector("button.verify-mode")) return;
-
     const nextAt = div.dataset.nextAvailableAt;
     const now = new Date();
 
@@ -252,27 +249,12 @@ async function handleTaskVerifyClick(taskId, itemEl) {
   try {
     const result = await apiPost(`/api/claim-task/${taskId}`, {});
     tg.HapticFeedback?.notificationOccurred("success");
-    playCoinSound();
     flyCoinsToBalance(itemEl);
-    showFloatingReward(itemEl, result.reward);
     await refreshState();
   } catch (e) {
     tg.HapticFeedback?.notificationOccurred("error");
     showError(e.message);
   }
-}
-
-// ---- نص عائم "+X ZORO" يطلع فوق مكان المهمة بعد نجاح التحقق ----
-function showFloatingReward(startEl, amount) {
-  if (!startEl) return;
-  const rect = startEl.getBoundingClientRect();
-  const el = document.createElement("div");
-  el.className = "floating-reward";
-  el.textContent = `+${amount} ZORO`;
-  el.style.left = `${rect.left + rect.width / 2}px`;
-  el.style.top = `${rect.top}px`;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 1400);
 }
 
 // ---------- Main action button ----------
@@ -283,7 +265,6 @@ document.getElementById("mainActionBtn").addEventListener("click", async () => {
     } else {
       const result = await apiPost("/api/mine/claim", {});
       tg.HapticFeedback?.notificationOccurred("success");
-      playCoinSound();
     }
     await refreshState();
   } catch (e) {
@@ -545,72 +526,5 @@ document.addEventListener("DOMContentLoaded", () => {
       soundEnabled = toggle.checked;
       localStorage.setItem("zoro_sound_enabled", soundEnabled);
     });
-  }
-});
-
-// ---------- Withdraw ----------
-document.getElementById("withdrawBtn").addEventListener("click", async () => {
-  const input = document.getElementById("withdrawAmount");
-  const statusEl = document.getElementById("withdrawStatus");
-  const amount = parseFloat(input.value);
-
-  statusEl.textContent = "";
-
-  if (!amount || amount <= 0) {
-    statusEl.textContent = "❌ اكتب مبلغ صحيح";
-    return;
-  }
-
-  const btn = document.getElementById("withdrawBtn");
-  btn.disabled = true;
-  statusEl.textContent = "⏳ جاري تنفيذ التحويل...";
-
-  try {
-    const data = await apiPost("/api/withdraw", { amount_zoro: amount });
-    statusEl.textContent = `✅ تم تحويل ${data.amount_ton} TON لمحفظتك بنجاح`;
-    input.value = "";
-    await refreshState();
-  } catch (e) {
-    statusEl.textContent = "❌ " + e.message;
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-// ---------- Wallet status + withdraw activation ----------
-function updateWalletStatus(walletAddress) {
-  const dot = document.getElementById("walletStatusDot");
-  const text = document.getElementById("walletStatusText");
-  const btn = document.getElementById("withdrawBtn");
-  const input = document.getElementById("withdrawAmount");
-
-  if (!dot || !text || !btn || !input) return;
-
-  if (walletAddress) {
-    dot.classList.add("status-active");
-    text.textContent = "✅ المحفظة مربوطة";
-    btn.disabled = false;
-    input.disabled = false;
-  } else {
-    dot.classList.remove("status-active");
-    text.textContent = "⚠️ اربط محفظتك أولاً من الأعلى قبل السحب";
-    btn.disabled = true;
-    input.disabled = true;
-  }
-}
-
-// ---------- زر قطع الاتصال اليدوي (بديل موثوق لقائمة TonConnect المدمجة) ----------
-document.getElementById("manualDisconnectBtn")?.addEventListener("click", async () => {
-  console.log("DISCONNECT_CLICK_FIRED");
-  try {
-    console.log("BEFORE_DISCONNECT_CALL");
-    await tonConnectUI.disconnect();
-    console.log("AFTER_DISCONNECT_CALL_SUCCESS");
-    tg.HapticFeedback?.notificationOccurred("success");
-    await refreshState();
-    console.log("AFTER_REFRESH_STATE");
-  } catch (e) {
-    console.log("DISCONNECT_ERROR", e.message, e);
-    showError(e.message || "فشل قطع الاتصال");
   }
 });
