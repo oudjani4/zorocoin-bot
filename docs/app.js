@@ -350,7 +350,7 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
 
       statusEl.textContent = "أكّد المعاملة في محفظتك...";
       await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 300,
+        validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
             address: treasury,
