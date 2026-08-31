@@ -601,11 +601,16 @@ function updateWalletStatus(walletAddress) {
 
 // ---------- زر قطع الاتصال اليدوي (بديل موثوق لقائمة TonConnect المدمجة) ----------
 document.getElementById("manualDisconnectBtn")?.addEventListener("click", async () => {
+  console.log("DISCONNECT_CLICK_FIRED");
   try {
+    console.log("BEFORE_DISCONNECT_CALL");
     await tonConnectUI.disconnect();
+    console.log("AFTER_DISCONNECT_CALL_SUCCESS");
     tg.HapticFeedback?.notificationOccurred("success");
     await refreshState();
+    console.log("AFTER_REFRESH_STATE");
   } catch (e) {
+    console.log("DISCONNECT_ERROR", e.message, e);
     showError(e.message || "فشل قطع الاتصال");
   }
 });
