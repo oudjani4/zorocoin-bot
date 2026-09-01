@@ -1,5 +1,5 @@
-window.addEventListener("unhandledrejection", function(e) { alert("Promise error: " + e.reason); });
-window.onerror = function(msg, url, line, col, error) { alert("خطأ JS:\n" + msg + "\nسطر: " + line); };
+window.addEventListener("unhandledrejection", function(e) { tg.showAlert("Promise error: " + e.reason); });
+window.onerror = function(msg, url, line, col, error) { tg.showAlert("خطأ JS:\n" + msg + "\nسطر: " + line); };
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
@@ -27,7 +27,7 @@ tonConnectUI.onStatusChange(async (wallet) => {
       await apiPost("/api/link-wallet", { wallet_address: address });
       await refreshState();
     } catch (e) {
-      alert("خطأ في ربط المحفظة: " + e.message);
+      tg.showAlert("خطأ في ربط المحفظة: " + e.message);
       console.error("link-wallet error:", e);
     }
   }
@@ -538,11 +538,11 @@ let soundEnabled = localStorage.getItem("zoro_sound_enabled");
 soundEnabled = soundEnabled === null ? true : soundEnabled === "true";
 
 function playCoinSound() {
-  alert("playCoinSound تم استدعاؤها");
-  if (!soundEnabled) { alert("الصوت متوقف: soundEnabled=" + soundEnabled); return; }
+  tg.showAlert("playCoinSound تم استدعاؤها");
+  if (!soundEnabled) { tg.showAlert("الصوت متوقف: soundEnabled=" + soundEnabled); return; }
   try {
     coinAudio.currentTime = 0;
-    coinAudio.play().catch((e) => alert("خطأ صوت: " + e.name + " - " + e.message));
+    coinAudio.play().catch((e) => tg.showAlert("خطأ صوت: " + e.name + " - " + e.message));
   } catch (e) {}
 }
 
