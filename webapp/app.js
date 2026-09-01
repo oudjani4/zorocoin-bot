@@ -1,3 +1,4 @@
+window.onerror = function(msg, url, line, col, error) { alert("خطأ JS:\n" + msg + "\nسطر: " + line); };
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
