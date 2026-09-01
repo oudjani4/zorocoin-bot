@@ -355,7 +355,6 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
           {
             address: treasury,
             amount: String(amountNanoton),
-            payload: await buildCommentPayload(comment),
           },
         ],
       });

@@ -461,14 +461,10 @@ class VerifyUpgradeBody(BaseModel):
     nonce: str
 
 
-async def find_matching_transaction(comment: str, min_amount_nanoton: int, after_ts: int) -> str | None:
+async def find_matching_transaction(sender_address: str, min_amount_nanoton: int, after_ts: int) -> str | None:
     """
-    بيدور في آخر معاملات محفظة الخزينة عن معاملة واردة فيها نفس التعليق
-    ومبلغ >= المطلوب وبعد وقت إنشاء طلب الترقية. بيرجع tx_hash لو لقاها.
-
-    ⚠️ شكل استجابة toncenter (خصوصًا مكان الـ comment جوه in_msg) بيختلف
-    شوية بين v2 وv3 ونسخ الـ API - راجع https://toncenter.com/api/v2/
-    وتأكد إن الحقول مطابقة قبل ما تشغل ده في الإنتاج. جرّب على testnet الأول.
+    بيدور في آخر معاملات محفظة الخزينة عن معاملة واردة من محفظة المستخدم
+    بمبلغ >= المطلوب وبعد وقت إنشاء طلب الترقية. بيرجع tx_hash لو لقاها.
     """
     params = {"address": TREASURY_WALLET_ADDRESS, "limit": 50, "to_lt": 0, "archival": "true"}
     headers = {"X-API-Key": TONCENTER_API_KEY} if TONCENTER_API_KEY else {}
@@ -481,6 +477,11 @@ async def find_matching_transaction(comment: str, min_amount_nanoton: int, after
     if not data.get("ok"):
         return None
 
+    def normalize(addr: str) -> str:
+        return addr.split(":")[-1].strip().lower() if addr else ""
+
+    target = normalize(sender_address)
+
     for tx in data.get("result", []):
         try:
             utime = tx.get("utime", 0)
@@ -488,8 +489,8 @@ async def find_matching_transaction(comment: str, min_amount_nanoton: int, after
                 continue
             in_msg = tx.get("in_msg", {})
             value = int(in_msg.get("value", 0))
-            msg_text = in_msg.get("message", "") or ""
-            if value >= min_amount_nanoton and comment in msg_text:
+            source = in_msg.get("source", "") or ""
+            if value >= min_amount_nanoton and normalize(source) == target:
                 return tx.get("transaction_id", {}).get("hash")
         except (TypeError, ValueError):
             continue
@@ -522,11 +523,13 @@ async def verify_level_upgrade(
     if datetime.utcnow() > pending.expires_at:
         raise HTTPException(400, "انتهت صلاحية طلب الترقية، ابدأ ترقية جديدة")
 
-    comment = f"zoro-lvl:{user.telegram_id}:{pending.to_level}:{pending.nonce}"
     min_amount_nanoton = int(pending.price_ton * 1_000_000_000)
     after_ts = int(pending.created_at.timestamp())
 
-    tx_hash = await find_matching_transaction(comment, min_amount_nanoton, after_ts)
+    if not user.wallet_address:
+        raise HTTPException(400, "لازم تربط محفظتك الأول")
+
+    tx_hash = await find_matching_transaction(user.wallet_address, min_amount_nanoton, after_ts)
     if not tx_hash:
         raise HTTPException(
             402,
