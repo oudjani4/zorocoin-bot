@@ -365,8 +365,8 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
       });
     }
 
-    statusEl.textContent = "بنتأكد من وصول الدفع على الشبكة...";
-    const result = await pollVerifyUpgrade(nonce, statusEl);
+    statusEl.textContent = "جاري تفعيل الترقية...";
+    const result = await apiPost("/api/levels/upgrade/verify", { nonce });
 
     pendingUpgradeNonce = null;
     statusEl.textContent = `🎉 اتّرقيت للمستوى ${result.new_level}!`;
