@@ -309,11 +309,11 @@ function renderLevelsList(currentLevel) {
 
 // بيبني الـ payload (تعليق المعاملة) كـ base64 BOC، لازم يتحط بالظبط في المعاملة
 // عشان السيرفر يقدر يلاقيها ويتأكد إنها هي فعلاً معاملة الترقية دي.
-function buildCommentPayload(comment) {
+async function buildCommentPayload(comment) {
   const cell = new TonWeb.boc.Cell();
   cell.bits.writeUint(0, 32); // op = 0 يعني "تعليق نصي بسيط"
   cell.bits.writeBytes(new TextEncoder().encode(comment));
-  return TonWeb.utils.bytesToBase64(cell.toBoc({idx: false, crc32: true}));
+  return TonWeb.utils.bytesToBase64(await cell.toBoc({idx: false, crc32: true}));
 }
 
 async function pollVerifyUpgrade(nonce, statusEl, attempts = 12, delayMs = 5000) {
@@ -355,7 +355,7 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
           {
             address: treasury,
             amount: String(amountNanoton),
-            payload: buildCommentPayload(comment),
+            payload: await buildCommentPayload(comment),
           },
         ],
       });
