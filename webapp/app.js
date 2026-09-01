@@ -1,4 +1,4 @@
-const tg = window.Telegram.WebApp;
+cconst tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
@@ -522,6 +522,16 @@ document.getElementById("gateRecheckBtn")?.addEventListener("click", async () =>
 
 // ---------- نظام صوت النقود (تفعيل/تعطيل + تشغيل) ----------
 const coinAudio = new Audio("assets/cha-ching.mp3");
+let audioUnlocked = false;
+document.addEventListener("click", function unlockAudio() {
+  if (audioUnlocked) return;
+  coinAudio.play().then(() => {
+    coinAudio.pause();
+    coinAudio.currentTime = 0;
+    audioUnlocked = true;
+  }).catch(() => {});
+});
+
 let soundEnabled = localStorage.getItem("zoro_sound_enabled");
 soundEnabled = soundEnabled === null ? true : soundEnabled === "true";
 
