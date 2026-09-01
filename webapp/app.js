@@ -5,7 +5,7 @@ tg.expand();
 // ⚠️ عدّل الرابط ده بعد ما ترفع الـ backend فعليًا
 const API_BASE = "https://zorocoin-bot.onrender.com";
 // ⚠️ عدّل رابط المانيفست بعد النشر
-const MANIFEST_URL = "https://oudjani4.github.io/zorocoin-bot/tonconnect-manifest.json";
+const MANIFEST_URL = "https://zoro-abel.onrender.com/tonconnect-manifest.json";
 
 const initData = tg.initData;
 
