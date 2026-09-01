@@ -478,7 +478,22 @@ async def find_matching_transaction(sender_address: str, min_amount_nanoton: int
         return None
 
     def normalize(addr: str) -> str:
-        return addr.split(":")[-1].strip().lower() if addr else ""
+        if not addr:
+            return ""
+        addr = addr.strip()
+        if ":" in addr:
+            parts = addr.split(":")
+            if len(parts) == 2 and all(c in "0123456789abcdefABCDEF" for c in parts[1]):
+                return parts[1].lower()
+        try:
+            import base64
+            b = addr.replace("-", "+").replace("_", "/")
+            raw = base64.b64decode(b + "=" * (-len(b) % 4))
+            if len(raw) == 36:
+                return raw[2:34].hex().lower()
+        except Exception:
+            pass
+        return addr.lower()
 
     target = normalize(sender_address)
 
