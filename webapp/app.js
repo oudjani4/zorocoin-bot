@@ -539,7 +539,7 @@ function playCoinSound() {
   if (!soundEnabled) return;
   try {
     coinAudio.currentTime = 0;
-    coinAudio.play().catch(() => {});
+    coinAudio.play().catch((e) => alert("خطأ صوت: " + e.name + " - " + e.message));
   } catch (e) {}
 }
 
