@@ -3,9 +3,9 @@ tg.ready();
 tg.expand();
 
 // ⚠️ عدّل الرابط ده بعد ما ترفع الـ backend فعليًا
-const API_BASE = "https://zoro-backend-5jyv.onrender.com";
+const API_BASE = "https://zorocoin-bot-production.up.railway.app";
 // ⚠️ عدّل رابط المانيفست بعد النشر
-const MANIFEST_URL = "https://zoro-abel.onrender.com/tonconnect-manifest.json";
+const MANIFEST_URL = "https://oudjani4.github.io/zorocoin-bot/tonconnect-manifest.json";
 
 const initData = tg.initData;
 
@@ -13,9 +13,6 @@ const initData = tg.initData;
 const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
   manifestUrl: MANIFEST_URL,
   buttonRootId: "ton-connect-btn",
-  actionsConfiguration: {
-    twaReturnUrl: "https://t.me/zorrocoin_bot"
-  },
 });
 
 tonConnectUI.onStatusChange(async (wallet) => {
@@ -309,11 +306,11 @@ function renderLevelsList(currentLevel) {
 
 // بيبني الـ payload (تعليق المعاملة) كـ base64 BOC، لازم يتحط بالظبط في المعاملة
 // عشان السيرفر يقدر يلاقيها ويتأكد إنها هي فعلاً معاملة الترقية دي.
-async function buildCommentPayload(comment) {
+function buildCommentPayload(comment) {
   const cell = new TonWeb.boc.Cell();
   cell.bits.writeUint(0, 32); // op = 0 يعني "تعليق نصي بسيط"
   cell.bits.writeBytes(new TextEncoder().encode(comment));
-  return TonWeb.utils.bytesToBase64(await cell.toBoc({idx: false, crc32: true}));
+  return TonWeb.utils.bytesToBase64(cell.toBoc(false));
 }
 
 async function pollVerifyUpgrade(nonce, statusEl, attempts = 12, delayMs = 5000) {
@@ -350,11 +347,12 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
 
       statusEl.textContent = "أكّد المعاملة في محفظتك...";
       await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600,
+        validUntil: Math.floor(Date.now() / 1000) + 300,
         messages: [
           {
             address: treasury,
             amount: String(amountNanoton),
+            payload: buildCommentPayload(comment),
           },
         ],
       });
