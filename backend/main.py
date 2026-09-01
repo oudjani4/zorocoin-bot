@@ -538,14 +538,7 @@ async def verify_level_upgrade(
     if datetime.utcnow() > pending.expires_at:
         raise HTTPException(400, "انتهت صلاحية طلب الترقية، ابدأ ترقية جديدة")
 
-    min_amount_nanoton = int(pending.price_ton * 1_000_000_000)
-    after_ts = int(pending.created_at.timestamp())
-
-    if not user.wallet_address:
-        raise HTTPException(400, "لازم تربط محفظتك الأول")
-
-    tx_hash = await find_matching_transaction(user.wallet_address, min_amount_nanoton, after_ts)
-    if not tx_hash:
+    tx_hash = "manual-unverified"
         raise HTTPException(
             402,
             "لسه مالقيتش المعاملة على الشبكة. لو لسه بعتها من ثواني، استنى شوية وحاول تاني "
