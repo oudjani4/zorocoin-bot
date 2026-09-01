@@ -538,11 +538,11 @@ let soundEnabled = localStorage.getItem("zoro_sound_enabled");
 soundEnabled = soundEnabled === null ? true : soundEnabled === "true";
 
 function playCoinSound() {
-  tg.showAlert("playCoinSound تم استدعاؤها");
+  console.log("DEBUG: playCoinSound called");
   if (!soundEnabled) { tg.showAlert("الصوت متوقف: soundEnabled=" + soundEnabled); return; }
   try {
     coinAudio.currentTime = 0;
-    coinAudio.play().catch((e) => tg.showAlert("خطأ صوت: " + e.name + " - " + e.message));
+    coinAudio.play().catch((e) => console.log("DEBUG: sound error " + e.name + " - " + e.message));
   } catch (e) {}
 }
 
