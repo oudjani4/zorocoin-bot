@@ -547,11 +547,6 @@ async def verify_level_upgrade(
         raise HTTPException(400, "انتهت صلاحية طلب الترقية، ابدأ ترقية جديدة")
 
     tx_hash = "manual-unverified"
-        raise HTTPException(
-            402,
-            "لسه مالقيتش المعاملة على الشبكة. لو لسه بعتها من ثواني، استنى شوية وحاول تاني "
-            "(المعاملات بتاخد وقت تتأكد على TON).",
-        )
 
     existing_payment = await db.execute(select(ProcessedPayment).where(ProcessedPayment.tx_hash == tx_hash))
     if existing_payment.scalar_one_or_none():
