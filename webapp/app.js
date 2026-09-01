@@ -536,6 +536,7 @@ let soundEnabled = localStorage.getItem("zoro_sound_enabled");
 soundEnabled = soundEnabled === null ? true : soundEnabled === "true";
 
 function playCoinSound() {
+  alert("playCoinSound تم استدعاؤها");
   if (!soundEnabled) { alert("الصوت متوقف: soundEnabled=" + soundEnabled); return; }
   try {
     coinAudio.currentTime = 0;
