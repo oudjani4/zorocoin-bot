@@ -391,6 +391,14 @@ async def referral_stats(
         "referral_code": user.referral_code,
         "referred_count": len(referred_users),
         "bonus_per_referral": REFERRAL_BONUS,
+        "referrals": [
+            {
+                "username": u.username,
+                "telegram_id": u.telegram_id,
+                "level": u.level,
+            }
+            for u in referred_users
+        ],
     }
 
 

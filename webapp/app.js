@@ -389,6 +389,16 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     const refStats = await apiGet("/api/referral-stats");
     document.getElementById("refCount").textContent = refStats.referred_count;
     document.getElementById("refBonusLabel").textContent = refStats.bonus_per_referral;
+    const referralsListEl = document.getElementById("referralsList");
+    if (refStats.referrals && refStats.referrals.length > 0) {
+      referralsListEl.innerHTML = refStats.referrals.map((r) => {
+        const name = r.username ? "@" + r.username : "(بدون اسم مستخدم)";
+        return `<div class="stat-line" style="border-bottom:1px solid rgba(255,255,255,0.08);padding:8px 0;">
+          <b>${name}</b><br>
+          <span style="font-size:12px;opacity:0.7;">ID: ${r.telegram_id} | المستوى: ${r.level}</span>
+        </div>`;
+      }).join("");
+    }
   } catch (e) {
     document.getElementById("loadingMsg").classList.add("hidden");
     if (e.subscriptionRequired) {
