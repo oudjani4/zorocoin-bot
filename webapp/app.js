@@ -1,3 +1,4 @@
+window.addEventListener("unhandledrejection", function(e) { alert("Promise error: " + e.reason); });
 window.onerror = function(msg, url, line, col, error) { alert("خطأ JS:\n" + msg + "\nسطر: " + line); };
 const tg = window.Telegram.WebApp;
 tg.ready();
