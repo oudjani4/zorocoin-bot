@@ -21,8 +21,13 @@ const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
 tonConnectUI.onStatusChange(async (wallet) => {
   if (wallet) {
     const address = wallet.account.address;
-    await apiPost("/api/link-wallet", { wallet_address: address });
-    await refreshState();
+    try {
+      await apiPost("/api/link-wallet", { wallet_address: address });
+      await refreshState();
+    } catch (e) {
+      alert("خطأ في ربط المحفظة: " + e.message);
+      console.error("link-wallet error:", e);
+    }
   }
 });
 
