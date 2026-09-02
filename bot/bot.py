@@ -53,9 +53,12 @@ def build_join_keyboard(missing_channels: list) -> dict:
 
 
 def build_webapp_keyboard(url: str) -> dict:
+    import time
+    sep = "&" if "?" in url else "?"
+    busted_url = f"{url}{sep}cb={int(time.time())}"
     return {
         "inline_keyboard": [
-            [{"text": "🚀 افتح تطبيق Zoro Airdrop", "web_app": {"url": url}}]
+            [{"text": "🚀 افتح تطبيق Zoro Airdrop", "web_app": {"url": busted_url}}]
         ]
     }
 
