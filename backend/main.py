@@ -649,6 +649,27 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     return True
 
 
+class TaskTitleUpdate(BaseModel):
+    id: int
+    title: str
+
+
+@app.post("/admin/tasks/update-titles")
+async def admin_update_task_titles(
+    updates: list[TaskTitleUpdate],
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_admin),
+):
+    updated = []
+    for u in updates:
+        task = await db.get(RequiredTask, u.id)
+        if task:
+            task.title = u.title
+            updated.append(u.id)
+    await db.commit()
+    return {"success": True, "updated_ids": updated}
+
+
 @app.get("/admin/users")
 async def admin_list_users(search: str = "", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     query = select(User)
