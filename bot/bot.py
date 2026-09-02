@@ -29,7 +29,7 @@ def api_call(method: str, params: dict | None = None) -> dict:
 
 
 def check_subscription(user_id: int) -> list:
-    """يرجع لائحة القنوات اللي المستخدم ماشي مشترك فيها"""
+    """Returns the list of channels the user has not joined yet"""
     not_joined = []
     for channel in REQUIRED_CHANNELS:
         r = api_call("getChatMember", {"chat_id": channel, "user_id": user_id})
@@ -47,8 +47,8 @@ def build_join_keyboard(missing_channels: list) -> dict:
     buttons = []
     for ch in missing_channels:
         username = ch.lstrip("@")
-        buttons.append([{"text": f"➕ انضم لـ {ch}", "url": f"https://t.me/{username}"}])
-    buttons.append([{"text": "✅ تحققت، كمّل", "callback_data": "check_sub"}])
+        buttons.append([{"text": f"➕ Join {ch}", "url": f"https://t.me/{username}"}])
+    buttons.append([{"text": "✅ I joined, continue", "callback_data": "check_sub"}])
     return {"inline_keyboard": buttons}
 
 
@@ -58,7 +58,7 @@ def build_webapp_keyboard(url: str) -> dict:
     busted_url = f"{url}{sep}cb={int(time.time())}"
     return {
         "inline_keyboard": [
-            [{"text": "🚀 افتح تطبيق Zoro Airdrop", "web_app": {"url": busted_url}}]
+            [{"text": "🚀 Open Zoro Airdrop App", "web_app": {"url": busted_url}}]
         ]
     }
 
@@ -80,7 +80,7 @@ def handle_start(message: dict):
         if missing:
             api_call("sendMessage", {
                 "chat_id": chat_id,
-                "text": "قبل ما تقدر تستخدم البوت، خاصك تنضم لهاد القنوات:",
+                "text": "Before you can use the bot, you need to join these channels:",
                 "reply_markup": build_join_keyboard(missing),
             })
             return
@@ -88,9 +88,9 @@ def handle_start(message: dict):
     api_call("sendMessage", {
         "chat_id": chat_id,
         "text": (
-            "أهلاً بيك في Zoro Airdrop! 🎉\n"
-            "اربط محفظتك وابدأ تجمع نقاط دلوقتي، ولما التوكن يتطلق هيتوزع عليك حسب رصيدك.\n\n"
-            "اضغط الزرار تحت عشان تفتح التطبيق:"
+            "Welcome to Zoro Airdrop! 🎉\n"
+            "Link your wallet and start earning points now. When the token launches, you'll receive your share based on your balance.\n\n"
+            "Tap the button below to open the app:"
         ),
         "reply_markup": build_webapp_keyboard(webapp_url),
     })
@@ -106,7 +106,7 @@ def handle_check_sub_callback(callback: dict):
     if missing:
         api_call("answerCallbackQuery", {
             "callback_query_id": callback_id,
-            "text": "مازال ناقصك تنضم لبعض القنوات ⚠️",
+            "text": "You still need to join some channels ⚠️",
             "show_alert": True,
         })
         return
@@ -115,7 +115,7 @@ def handle_check_sub_callback(callback: dict):
     api_call("editMessageText", {
         "chat_id": chat_id,
         "message_id": message_id,
-        "text": "تمام! ✅ دابا تقدر تفتح التطبيق:",
+        "text": "All set! ✅ You can now open the app:",
         "reply_markup": build_webapp_keyboard(WEBAPP_URL),
     })
 
@@ -124,7 +124,7 @@ def handle_fallback(message: dict):
     chat_id = message["chat"]["id"]
     api_call("sendMessage", {
         "chat_id": chat_id,
-        "text": "استخدم الزرار تحت عشان تفتح التطبيق وتبدأ التجميع:",
+        "text": "Use the button below to open the app and start earning:",
         "reply_markup": build_webapp_keyboard(WEBAPP_URL),
     })
 
@@ -180,13 +180,13 @@ async def start_web_server():
 
 async def main():
     if not BOT_TOKEN:
-        raise RuntimeError("BOT_TOKEN غير موجود في ملف .env")
+        raise RuntimeError("BOT_TOKEN not found in .env file")
     if not WEBAPP_URL or not WEBAPP_URL.startswith("https://"):
-        raise RuntimeError("WEBAPP_URL لازم يكون رابط HTTPS صحيح")
+        raise RuntimeError("WEBAPP_URL must be a valid HTTPS link")
 
     me = api_call("getMe")
     if not me.get("ok"):
-        raise RuntimeError(f"BOT_TOKEN غير صالح: {me}")
+        raise RuntimeError(f"Invalid BOT_TOKEN: {me}")
     log.info(f"Bot started: @{me['result']['username']}")
 
     await start_web_server()

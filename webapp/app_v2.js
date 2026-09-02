@@ -1,12 +1,12 @@
 window.addEventListener("unhandledrejection", function(e) { tg.showAlert("Promise error: " + e.reason); });
-window.onerror = function(msg, url, line, col, error) { tg.showAlert("خطأ JS:\n" + msg + "\nسطر: " + line); };
+window.onerror = function(msg, url, line, col, error) { tg.showAlert("JS Error:\n" + msg + "\nLine: " + line); };
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// ⚠️ عدّل الرابط ده بعد ما ترفع الـ backend فعليًا
+// ⚠️ Update this URL after deploying the backend
 const API_BASE = "https://zoro-backend-5jyv.onrender.com";
-// ⚠️ عدّل رابط المانيفست بعد النشر
+// ⚠️ Update the manifest URL after deployment
 const MANIFEST_URL = "https://zoro-abel.onrender.com/tonconnect-manifest.json";
 
 const initData = tg.initData;
@@ -27,7 +27,7 @@ tonConnectUI.onStatusChange(async (wallet) => {
       await apiPost("/api/link-wallet", { wallet_address: address });
       await refreshState();
     } catch (e) {
-      tg.showAlert("خطأ في ربط المحفظة: " + e.message);
+      tg.showAlert("Error linking wallet: " + e.message);
       console.error("link-wallet error:", e);
     }
   }
@@ -44,15 +44,15 @@ async function apiPost(path, body) {
     body: JSON.stringify(body || {}),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "خطأ غير معروف" }));
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
     const detail = err.detail;
     if (detail && typeof detail === "object" && detail.error === "subscription_required") {
-      const gateError = new Error(detail.message || "لازم تنضم للقنوات المطلوبة");
+      const gateError = new Error(detail.message || "You need to join the required channels");
       gateError.subscriptionRequired = true;
       gateError.missingChannels = detail.missing_channels || [];
       throw gateError;
     }
-    throw new Error(typeof detail === "string" ? detail : "خطأ في الطلب");
+    throw new Error(typeof detail === "string" ? detail : "Request error");
   }
   return res.json();
 }
@@ -61,7 +61,7 @@ async function apiGet(path) {
   const res = await fetch(API_BASE + path, {
     headers: { "X-Telegram-Init-Data": initData },
   });
-  if (!res.ok) throw new Error("خطأ في الطلب");
+  if (!res.ok) throw new Error("Request error");
   return res.json();
 }
 
@@ -88,11 +88,11 @@ let currentState = null;
 let pendingTimer = null;
 
 function getReferralCodeFromStartParam() {
-  // الحالة 1: المستخدم فتح رابط t.me/YourBot?startapp=CODE مباشرة
+  // Case 1: user opened t.me/YourBot?startapp=CODE directly
   const startParam = tg.initDataUnsafe?.start_param;
   if (startParam) return startParam;
 
-  // الحالة 2: الكود اتحط في رابط الـ WebApp نفسه كـ ?ref=CODE (من زرار داخل شات البوت)
+  // Case 2: the code was placed in the WebApp link itself as ?ref=CODE (from a button inside the bot chat)
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get("ref");
 }
@@ -107,7 +107,7 @@ async function refreshState() {
 function render(data) {
   document.getElementById("loadingMsg").classList.add("hidden");
 
-  document.getElementById("usernameLabel").textContent = data.username || "بدون اسم";
+  document.getElementById("usernameLabel").textContent = data.username || "No name";
   document.getElementById("avatarInitial").textContent = (data.username || "?")[0].toUpperCase();
   document.getElementById("levelValue").textContent = data.level;
 
@@ -116,20 +116,20 @@ function render(data) {
   document.getElementById("holdingBalance").textContent = `${data.holding_balance} ZORO`;
 
   document.getElementById("profileUsername").textContent = data.username || "-";
-  document.getElementById("profileWallet").textContent = data.wallet_address || "غير مربوطة";
+  document.getElementById("profileWallet").textContent = data.wallet_address || "Not linked";
   document.getElementById("profilePool").textContent = data.pool_balance.toFixed(4);
   document.getElementById("profileHolding").textContent = data.holding_balance;
   document.getElementById("profileMinWithdrawal").textContent = `${data.min_withdrawal_zoro} ZORO`;
   document.getElementById("profileExchangeRate").textContent =
-    `سعر الصرف عند التوزيع: ${data.zoro_to_ton_rate} ZORO = 1 TON`;
+    `Exchange rate at distribution: ${data.zoro_to_ton_rate} ZORO = 1 TON`;
 
   const remaining = Math.max(0, data.min_withdrawal_zoro - data.pool_balance);
   document.getElementById("minWithdrawalHint").textContent =
     remaining > 0
-      ? `محتاج ${remaining.toFixed(2)} ZORO كمان عشان توصل للحد الأدنى للسحب (${data.min_withdrawal_zoro})`
-      : `✅ رصيدك وصل للحد الأدنى للسحب (${data.min_withdrawal_zoro} ZORO)`;
+      ? `You need ${remaining.toFixed(2)} more ZORO to reach the minimum withdrawal (${data.min_withdrawal_zoro})`
+      : `✅ Your balance has reached the minimum withdrawal (${data.min_withdrawal_zoro} ZORO)`;
 
-  // ---- زرار الفعل الرئيسي (START / CLAIM) ----
+  // ---- Main action button (START / CLAIM) ----
   const btn = document.getElementById("mainActionBtn");
   const coin = document.getElementById("coinVisual");
   const hint = document.getElementById("mineHint");
@@ -137,21 +137,21 @@ function render(data) {
   clearInterval(pendingTimer);
 
   if (!data.wallet_address) {
-    btn.textContent = "اربط محفظتك أولاً";
+    btn.textContent = "Link your wallet first";
     btn.disabled = true;
-    hint.textContent = "اضغط زرار Connect Wallet فوق";
+    hint.textContent = "Tap the Connect Wallet button above";
     coin.classList.remove("mining");
   } else if (data.is_mining) {
     btn.textContent = data.session_full ? "CLAIM" : "TAP TO CLAIM EARLY";
     btn.disabled = false;
     btn.classList.add("claim");
     coin.classList.add("mining");
-    hint.textContent = "التعدين شغال...";
+    hint.textContent = "Mining in progress...";
 
     let pending = data.pending_mined;
     document.getElementById("pendingBadge").textContent = `+${pending.toFixed(4)}`;
 
-    // عداد بصري تقريبي (العدد الحقيقي بيتأكد من السيرفر وقت الـ claim)
+    // Approximate visual counter (the real amount is confirmed by the server at claim time)
     const ratePerSecond = data.mining_rate_per_hour / 3600;
     if (!data.session_full) {
       pendingTimer = setInterval(() => {
@@ -165,10 +165,10 @@ function render(data) {
     btn.classList.remove("claim");
     coin.classList.remove("mining");
     document.getElementById("pendingBadge").textContent = "+0.0000";
-    hint.textContent = `معدل التعدين: ${data.mining_rate_per_hour} ZORO/ساعة`;
+    hint.textContent = `Mining rate: ${data.mining_rate_per_hour} ZORO/hour`;
   }
 
-  // ---- المهام ----
+  // ---- Tasks ----
   const tasksList = document.getElementById("tasksList");
   tasksList.innerHTML = "";
   data.tasks.forEach((task) => {
@@ -180,7 +180,7 @@ function render(data) {
     div.innerHTML = `
       <div>
         <div class="task-title">${task.title}</div>
-        <div class="task-reward">+${task.reward} Zoro • كل ${task.cooldown_hours} ساعة</div>
+        <div class="task-reward">+${task.reward} Zoro • every ${task.cooldown_hours}h</div>
       </div>
       <div class="task-action"></div>
     `;
@@ -191,7 +191,7 @@ function render(data) {
   clearInterval(taskCooldownTimer);
   taskCooldownTimer = setInterval(renderTaskButtons, 1000);
 
-  // ---- Miner (المستويات) ----
+  // ---- Miner (levels) ----
   document.getElementById("minerCurrentLevel").textContent = data.level;
   document.getElementById("minerMaxLevel").textContent = data.max_level;
   document.getElementById("minerCurrentRate").textContent = data.mining_rate_per_hour;
@@ -211,8 +211,8 @@ function render(data) {
 
   if (levelsListLoaded) renderLevelsList(data.level);
 
-  // ---- الإحالة ----
-  const botUsername = "zorrocoin_bot"; // ⚠️ عدّله لاسم يوزر البوت بتاعك
+  // ---- Referral ----
+  const botUsername = "zorrocoin_bot"; // ⚠️ Change this to your bot's username
   const refLink = `https://t.me/${botUsername}?startapp=${data.referral_code}`;
   document.getElementById("refLinkText").textContent = refLink;
   window._refLink = refLink;
@@ -227,7 +227,7 @@ function renderTaskButtons() {
     const now = new Date();
 
     if (!nextAt || now >= new Date(nextAt)) {
-      actionEl.innerHTML = `<button data-task-id="${div.dataset.taskId}" data-channel="${div.dataset.channel}">انضمام</button>`;
+      actionEl.innerHTML = `<button data-task-id="${div.dataset.taskId}" data-channel="${div.dataset.channel}">Join</button>`;
       const btn = actionEl.querySelector("button");
       btn.addEventListener("click", () => handleTaskJoinClick(btn, div.dataset.taskId, div.dataset.channel, div));
     } else {
@@ -235,23 +235,23 @@ function renderTaskButtons() {
       const h = Math.floor(remaining / 3600);
       const m = Math.floor((remaining % 3600) / 60);
       const s = Math.floor(remaining % 60);
-      actionEl.innerHTML = `<span class="task-cooldown">${h}س ${m}د ${s}ث</span>`;
+      actionEl.innerHTML = `<span class="task-cooldown">${h}h ${m}m ${s}s</span>`;
     }
   });
 }
 
-// المرحلة 1: الضغط على "انضمام" بيفتح رابط القناة، وبيحول الزرار لـ "تحقق الآن".
+// Step 1: tapping "Join" opens the channel link and switches the button to "Verify now".
 function handleTaskJoinClick(btn, taskId, channel, itemEl) {
   const username = channel.replace("@", "").replace("https://t.me/", "");
   tg.openTelegramLink(`https://t.me/${username}`);
 
-  btn.textContent = "تحقق الآن ✅";
+  btn.textContent = "Verify now ✅";
   btn.classList.add("verify-mode");
   btn.onclick = () => handleTaskVerifyClick(taskId, itemEl);
 }
 
-// المرحلة 2: الضغط على "تحقق الآن" بيتحقق فعليًا من العضوية عبر السيرفر
-// (Telegram Bot API) قبل ما يمنح المكافأة.
+// Step 2: tapping "Verify now" actually checks membership via the server
+// (Telegram Bot API) before granting the reward.
 async function handleTaskVerifyClick(taskId, itemEl) {
   try {
     const result = await apiPost(`/api/claim-task/${taskId}`, {});
@@ -286,7 +286,7 @@ document.getElementById("copyRefBtn").addEventListener("click", () => {
   tg.HapticFeedback?.impactOccurred("light");
 });
 
-// ---------- Miner (نظام المستويات) ----------
+// ---------- Miner (levels system) ----------
 let allLevels = [];
 let levelsListLoaded = false;
 let pendingUpgradeNonce = null;
@@ -307,7 +307,7 @@ function renderLevelsList(currentLevel) {
     const priceLabel = lvl.upgrade_price_ton != null ? `${lvl.upgrade_price_ton} TON` : "—";
     row.innerHTML = `
       <span class="level-num">Lvl ${lvl.level}</span>
-      <span class="level-rate">${lvl.mining_rate_per_hour} ZORO/س</span>
+      <span class="level-rate">${lvl.mining_rate_per_hour} ZORO/h</span>
       <span class="level-price">${lvl.unlocked ? "" : priceLabel}</span>
       <span class="level-check">${lvl.unlocked ? "✅" : ""}</span>
     `;
@@ -315,11 +315,11 @@ function renderLevelsList(currentLevel) {
   });
 }
 
-// بيبني الـ payload (تعليق المعاملة) كـ base64 BOC، لازم يتحط بالظبط في المعاملة
-// عشان السيرفر يقدر يلاقيها ويتأكد إنها هي فعلاً معاملة الترقية دي.
+// Builds the payload (transaction comment) as base64 BOC, which must be placed
+// exactly in the transaction so the server can find it and confirm it's this upgrade.
 async function buildCommentPayload(comment) {
   const cell = new TonWeb.boc.Cell();
-  cell.bits.writeUint(0, 32); // op = 0 يعني "تعليق نصي بسيط"
+  cell.bits.writeUint(0, 32); // op = 0 means "simple text comment"
   cell.bits.writeBytes(new TextEncoder().encode(comment));
   return TonWeb.utils.bytesToBase64(await cell.toBoc({idx: false, crc32: true}));
 }
@@ -328,13 +328,13 @@ async function pollVerifyUpgrade(nonce, statusEl, attempts = 12, delayMs = 5000)
   for (let i = 0; i < attempts; i++) {
     try {
       const result = await apiPost("/api/levels/upgrade/verify", { nonce });
-      return result; // نجحت
+      return result; // succeeded
     } catch (e) {
-      statusEl.textContent = `بستنى تأكيد المعاملة على الشبكة... (${i + 1}/${attempts})`;
+      statusEl.textContent = `Waiting for transaction confirmation on the network... (${i + 1}/${attempts})`;
       await new Promise((r) => setTimeout(r, delayMs));
     }
   }
-  throw new Error("مقدرتش أتأكد من وصول الدفع لحد دلوقتي. جرّب زرار 'تحقق من الدفع' تاني بعد شوية.");
+  throw new Error("Couldn't confirm the payment yet. Try the 'Check payment' button again in a bit.");
 }
 
 document.getElementById("minerUpgradeBtn").addEventListener("click", async () => {
@@ -348,7 +348,7 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     let treasury, amountNanoton, comment;
 
     if (!nonce) {
-      statusEl.textContent = "جاري تجهيز طلب الترقية...";
+      statusEl.textContent = "Preparing upgrade request...";
       const req = await apiPost("/api/levels/upgrade/start", {});
       treasury = req.treasury_address;
       amountNanoton = req.amount_nanoton;
@@ -356,7 +356,7 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
       nonce = comment.split(":").pop();
       pendingUpgradeNonce = nonce;
 
-      statusEl.textContent = "أكّد المعاملة في محفظتك...";
+      statusEl.textContent = "Confirm the transaction in your wallet...";
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
@@ -368,17 +368,17 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
       });
     }
 
-    statusEl.textContent = "جاري تفعيل الترقية...";
+    statusEl.textContent = "Activating upgrade...";
     const result = await apiPost("/api/levels/upgrade/verify", { nonce });
 
     pendingUpgradeNonce = null;
-    statusEl.textContent = `🎉 اتّرقيت للمستوى ${result.new_level}!`;
+    statusEl.textContent = `🎉 You've been upgraded to level ${result.new_level}!`;
     tg.HapticFeedback?.notificationOccurred("success");
     await refreshState();
     await fetchLevelsList();
   } catch (e) {
-    statusEl.textContent = e.message || "حصل خطأ، حاول تاني";
-    showError(e.message || "فشلت الترقية");
+    statusEl.textContent = e.message || "An error occurred, try again";
+    showError(e.message || "Upgrade failed");
   } finally {
     btn.disabled = false;
   }
@@ -395,10 +395,10 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     const referralsListEl = document.getElementById("referralsList");
     if (refStats.referrals && refStats.referrals.length > 0) {
       referralsListEl.innerHTML = refStats.referrals.map((r) => {
-        const name = r.username ? "@" + r.username : "(بدون اسم مستخدم)";
+        const name = r.username ? "@" + r.username : "(no username)";
         return `<div class="stat-line" style="border-bottom:1px solid rgba(255,255,255,0.08);padding:8px 0;">
           <b>${name}</b><br>
-          <span style="font-size:12px;opacity:0.7;">ID: ${r.telegram_id} | المستوى: ${r.level}</span>
+          <span style="font-size:12px;opacity:0.7;">ID: ${r.telegram_id} | Level: ${r.level}</span>
         </div>`;
       }).join("");
     }
@@ -407,12 +407,12 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     if (e.subscriptionRequired) {
       showGateScreen(e.missingChannels);
     } else {
-      showError("تعذر الاتصال بالسيرفر: " + e.message);
+      showError("Could not connect to the server: " + e.message);
     }
   }
 })();
 
-// ---------- عملات ذهبية تطير من مكان المهمة إلى الرصيد ----------
+// ---------- Gold coins flying from the task to the balance ----------
 function flyCoinsToBalance(startEl, coinCount = 6) {
   const targetEl = document.getElementById("poolBalance");
   if (!startEl || !targetEl) return;
@@ -454,7 +454,7 @@ function flyCoinsToBalance(startEl, coinCount = 6) {
 }
 
 
-// ---- عملات ذهبية متطايرة من العملة ----
+// ---- Gold coin particles flying from the coin ----
 function spawnZoroParticles() {
   const wrap = document.querySelector(".coin-wrap");
   if (!wrap) return;
@@ -479,7 +479,7 @@ setInterval(() => {
   }
 }, 900);
 
-// ---------- شاشة الاشتراك الإجباري ----------
+// ---------- Mandatory subscription screen ----------
 function showGateScreen(missingChannels) {
   document.getElementById("loadingMsg").classList.add("hidden");
   document.querySelectorAll(".page").forEach((p) => p.classList.add("hidden"));
@@ -497,7 +497,7 @@ function showGateScreen(missingChannels) {
     a.href = `https://t.me/${username}`;
     a.target = "_blank";
     a.className = "gate-channel-btn";
-    a.textContent = `➕ انضم لـ @${username}`;
+    a.textContent = `➕ Join @${username}`;
     list.appendChild(a);
   });
 }
@@ -505,7 +505,7 @@ function showGateScreen(missingChannels) {
 document.getElementById("gateRecheckBtn")?.addEventListener("click", async () => {
   const statusEl = document.getElementById("gateStatus");
   statusEl.classList.remove("hidden");
-  statusEl.textContent = "جاري التحقق...";
+  statusEl.textContent = "Verifying...";
   try {
     await refreshState();
     document.getElementById("page-gate").classList.add("hidden");
@@ -515,14 +515,14 @@ document.getElementById("gateRecheckBtn")?.addEventListener("click", async () =>
   } catch (e) {
     if (e.subscriptionRequired) {
       showGateScreen(e.missingChannels);
-      statusEl.textContent = "لسه ناقصك قنوات ⚠️";
+      statusEl.textContent = "You still need to join some channels ⚠️";
     } else {
-      statusEl.textContent = "تعذر التحقق: " + e.message;
+      statusEl.textContent = "Verification failed: " + e.message;
     }
   }
 });
 
-// ---------- نظام صوت النقود (تفعيل/تعطيل + تشغيل) ----------
+// ---------- Coin sound system (enable/disable + play) ----------
 const coinAudio = new Audio("assets/cha-ching.mp3");
 let audioUnlocked = false;
 document.addEventListener("click", function unlockAudio() {
@@ -538,16 +538,11 @@ let soundEnabled = localStorage.getItem("zoro_sound_enabled");
 soundEnabled = soundEnabled === null ? true : soundEnabled === "true";
 
 function playCoinSound() {
-  tg.showAlert("TEST: playCoinSound called, soundEnabled=" + soundEnabled);
   if (!soundEnabled) { return; }
   try {
     coinAudio.currentTime = 0;
-    coinAudio.play().then(() => {
-      tg.showAlert("TEST: play() succeeded");
-    }).catch((e) => tg.showAlert("TEST: play() FAILED - " + e.name + ": " + e.message));
-  } catch (e) {
-    tg.showAlert("TEST: exception - " + e.message);
-  }
+    coinAudio.play().catch(() => {});
+  } catch (e) {}
 }
 
 document.addEventListener("DOMContentLoaded", () => {

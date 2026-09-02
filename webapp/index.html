@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Zoro Airdrop</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/@tonconnect/ui@3.0.2/dist/tonconnect-ui.min.js" crossorigin="anonymous"></script>
-<!-- بنستخدمها بس عشان نبني الـ comment payload (تعليق المعاملة) لمعاملات الدفع -->
+<!-- Used only to build the comment payload for payment transactions -->
 <script src="https://unpkg.com/tonweb@0.0.62/dist/tonweb.js"></script>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="app">
 
-    <!-- ===== شريط علوي: المستخدم + زرار المحفظة ===== -->
+    <!-- ===== Top bar: user + wallet button ===== -->
     <header class="topbar">
       <div class="userbox">
         <div class="avatar" id="avatarInitial">?</div>
@@ -25,7 +25,7 @@
       <div id="ton-connect-btn"></div>
     </header>
 
-    <!-- ===== صفحة Mine ===== -->
+    <!-- ===== Mine page ===== -->
     <section id="page-mine" class="page">
       <div class="assets-card">
         <p class="assets-label">ASSETS</p>
@@ -53,58 +53,58 @@
       <p class="hint center" id="mineHint"></p>
     </section>
 
-    <!-- ===== صفحة Tasks ===== -->
+    <!-- ===== Tasks page ===== -->
     <section id="page-tasks" class="page hidden">
-      <h3 class="section-title">المهام</h3>
+      <h3 class="section-title">Tasks</h3>
       <div id="tasksList"></div>
     </section>
 
-    <!-- ===== صفحة Miner (المستويات) ===== -->
+    <!-- ===== Miner page (levels) ===== -->
     <section id="page-miner" class="page hidden">
-      <h3 class="section-title">المستويات</h3>
+      <h3 class="section-title">Levels</h3>
       <div class="card miner-summary">
-        <p class="stat-line">مستواك الحالي: <b id="minerCurrentLevel">1</b> / <span id="minerMaxLevel">100</span></p>
-        <p class="stat-line">معدل التعدين الحالي: <b id="minerCurrentRate">10</b> ZORO/ساعة</p>
+        <p class="stat-line">Your current level: <b id="minerCurrentLevel">1</b> / <span id="minerMaxLevel">100</span></p>
+        <p class="stat-line">Current mining rate: <b id="minerCurrentRate">10</b> ZORO/hour</p>
         <div id="minerNextBox" class="miner-next-box">
-          <p class="hint">الترقية للمستوى <span id="minerNextLevel">2</span> بتديك <b id="minerNextRate">15</b> ZORO/ساعة</p>
-          <button id="minerUpgradeBtn" class="main-action-btn">ترقية بـ <span id="minerNextPrice">1.0</span> TON</button>
+          <p class="hint">Upgrading to level <span id="minerNextLevel">2</span> gives you <b id="minerNextRate">15</b> ZORO/hour</p>
+          <button id="minerUpgradeBtn" class="main-action-btn">Upgrade for <span id="minerNextPrice">1.0</span> TON</button>
           <p id="minerUpgradeStatus" class="hint center hidden"></p>
         </div>
-        <p id="minerMaxedMsg" class="hint center hidden">وصلت لأعلى مستوى 🎉</p>
+        <p id="minerMaxedMsg" class="hint center hidden">You've reached the maximum level 🎉</p>
       </div>
       <div id="levelsList" class="levels-list"></div>
     </section>
 
-    <!-- ===== صفحة Friends ===== -->
+    <!-- ===== Friends page ===== -->
     <section id="page-friends" class="page hidden">
-      <h3 class="section-title">دعوة الأصدقاء</h3>
+      <h3 class="section-title">Invite Friends</h3>
       <div class="card">
-        <p class="hint">اكسب <span id="refBonusLabel">25</span> ZORO عن كل صديق ينضم برابطك</p>
+        <p class="hint">Earn <span id="refBonusLabel">25</span> ZORO for every friend who joins with your link</p>
         <div class="ref-link-box">
           <span id="refLinkText">...</span>
         </div>
-        <button id="copyRefBtn">نسخ رابط الدعوة</button>
-        <p class="stat-line">عدد الأصدقاء المنضمين: <b id="refCount">0</b></p>
+        <button id="copyRefBtn">Copy invite link</button>
+        <p class="stat-line">Friends joined: <b id="refCount">0</b></p>
       </div>
       <div class="card" id="referralsListCard">
-        <h4 class="section-title" style="font-size:16px;">إحالاتي</h4>
-        <div id="referralsList"><p class="hint">لسه مفيش أصدقاء منضمين</p></div>
+        <h4 class="section-title" style="font-size:16px;">My Referrals</h4>
+        <div id="referralsList"><p class="hint">No friends have joined yet</p></div>
       </div>
     </section>
 
-    <!-- ===== صفحة Profile ===== -->
+    <!-- ===== Profile page ===== -->
     <section id="page-profile" class="page hidden">
-      <h3 class="section-title">الملف الشخصي</h3>
+      <h3 class="section-title">Profile</h3>
       <div class="card">
-        <p class="stat-line">اسم المستخدم: <b id="profileUsername">-</b></p>
-        <p class="stat-line">محفظتك: <b id="profileWallet">غير مربوطة</b></p>
-        <button id="manualDisconnectBtn" class="btn hidden" style="background:#c0392b;color:#fff;margin:8px 0;">قطع الاتصال بالمحفظة</button>
-        <p class="stat-line">رصيد Pool: <b id="profilePool">0</b></p>
-        <p class="stat-line">رصيد Holding: <b id="profileHolding">0</b></p>
-        <p class="stat-line">الحد الأدنى للسحب: <b id="profileMinWithdrawal">-</b></p>
+        <p class="stat-line">Username: <b id="profileUsername">-</b></p>
+        <p class="stat-line">Your wallet: <b id="profileWallet">Not linked</b></p>
+        <button id="manualDisconnectBtn" class="btn hidden" style="background:#c0392b;color:#fff;margin:8px 0;">Disconnect wallet</button>
+        <p class="stat-line">Pool balance: <b id="profilePool">0</b></p>
+        <p class="stat-line">Holding balance: <b id="profileHolding">0</b></p>
+        <p class="stat-line">Minimum withdrawal: <b id="profileMinWithdrawal">-</b></p>
         <p class="hint" id="profileExchangeRate"></p>
         <div class="stat-line sound-toggle-row">
-          <span>صوت النقود 🔊</span>
+          <span>Coin sound 🔊</span>
           <label class="switch">
             <input type="checkbox" id="soundToggle" checked />
             <span class="slider"></span>
@@ -113,25 +113,25 @@
       </div>
 
       <div class="card withdraw-card">
-        <h3 class="section-title">💸 سحب الرصيد</h3>
-        <input type="number" id="withdrawAmount" placeholder="كمية ZORO للسحب" step="0.01" />
-        <button id="withdrawBtn" class="btn withdraw-btn-big">💸 سحب الآن</button>
+        <h3 class="section-title">💸 Withdraw Balance</h3>
+        <input type="number" id="withdrawAmount" placeholder="ZORO amount to withdraw" step="0.01" />
+        <button id="withdrawBtn" class="btn withdraw-btn-big">💸 Withdraw Now</button>
         <p class="hint" id="withdrawStatus"></p>
       </div>
     </section>
 
-    <p id="loadingMsg" class="loading">جاري التحميل...</p>
+    <p id="loadingMsg" class="loading">Loading...</p>
     <p id="errorMsg" class="error hidden"></p>
 
-    <!-- ===== شاشة الاشتراك الإجباري ===== -->
+    <!-- ===== Mandatory subscription screen ===== -->
     <section id="page-gate" class="page hidden">
-      <h3 class="section-title">اشترك في قناة واحدة على الأقل من هذه القنوات</h3>
+      <h3 class="section-title">Subscribe to at least one of these channels</h3>
       <div id="gateChannelsList" class="card"></div>
-      <button id="gateRecheckBtn" class="main-action-btn">تحقق ودخول</button>
+      <button id="gateRecheckBtn" class="main-action-btn">Verify and Enter</button>
       <p id="gateStatus" class="hint center hidden"></p>
     </section>
 
-    <!-- ===== تابات سفلية ===== -->
+    <!-- ===== Bottom tabs ===== -->
     <nav class="bottom-nav">
       <button class="nav-btn active" data-page="mine">⛏️<span>Mine</span></button>
       <button class="nav-btn" data-page="tasks">📋<span>Tasks</span></button>
