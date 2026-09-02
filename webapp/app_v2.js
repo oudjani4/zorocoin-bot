@@ -270,8 +270,8 @@ document.getElementById("mainActionBtn").addEventListener("click", async () => {
     if (!currentState.is_mining) {
       await apiPost("/api/mine/start", {});
     } else {
-      playCoinSound();
       const result = await apiPost("/api/mine/claim", {});
+      playCoinSound();
       tg.HapticFeedback?.notificationOccurred("success");
     }
     await refreshState();
@@ -538,8 +538,7 @@ let soundEnabled = localStorage.getItem("zoro_sound_enabled");
 soundEnabled = soundEnabled === null ? true : soundEnabled === "true";
 
 function playCoinSound() {
-  console.log("DEBUG: playCoinSound called");
-  if (!soundEnabled) { tg.showAlert("الصوت متوقف: soundEnabled=" + soundEnabled); return; }
+  if (!soundEnabled) { return; }
   try {
     coinAudio.currentTime = 0;
     coinAudio.play().catch((e) => console.log("DEBUG: sound error " + e.name + " - " + e.message));
