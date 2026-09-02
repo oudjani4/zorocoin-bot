@@ -419,23 +419,18 @@ body {
 
 
 /* ===== Zoro background image ===== */
-body {
-  background: #0e0d0b;
-  position: relative;
+html {
+  min-height: 100%;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
+body {
   background-image:
     linear-gradient(rgba(14, 13, 11, 0.88), rgba(14, 13, 11, 0.92)),
     url("assets/bg-dispenser.png");
   background-size: cover;
-  background-position: center;
+  background-position: top center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
+  position: relative;
 }
 
 #app {
