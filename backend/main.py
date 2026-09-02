@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -611,3 +612,122 @@ async def request_withdraw(
         "amount_ton": round(amount_ton, 4),
         "new_holding_balance": round(user.holding_balance, 4),
     }
+
+
+# ============================================================
+# Admin Panel
+# ============================================================
+security = HTTPBasic()
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+
+def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    ok_user = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
+    ok_pass = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
+    if not (ok_user and ok_pass):
+        raise HTTPException(status_code=401, detail="بيانات دخول غير صحيحة",
+                             headers={"WWW-Authenticate": "Basic"})
+    return True
+
+
+@app.get("/admin/users")
+async def admin_list_users(search: str = "", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+    query = select(User)
+    if search:
+        s = search.strip()
+        if s.lstrip("-").isdigit():
+            query = query.where(User.telegram_id == int(s))
+        else:
+            query = query.where(User.wallet_address.ilike(f"%{s}%"))
+    result = await db.execute(query.order_by(User.id.desc()).limit(100))
+    users = result.scalars().all()
+    return [{
+        "id": u.id, "telegram_id": u.telegram_id, "username": u.username,
+        "first_name": u.first_name, "wallet_address": u.wallet_address,
+        "level": u.level, "pool_balance": round(u.pool_balance, 4),
+        "holding_balance": round(u.holding_balance, 4),
+        "created_at": u.created_at.isoformat() if u.created_at else None,
+    } for u in users]
+
+
+@app.post("/admin/users/{user_id}/reset")
+async def admin_reset_user_balance(user_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "المستخدم غير موجود")
+    user.pool_balance = 0.0
+    user.holding_balance = 0.0
+    await db.commit()
+    return {"success": True, "message": f"تم تصفير رصيد {user.telegram_id}"}
+
+
+class LevelUpdatePayload(BaseModel):
+    level: int
+
+
+@app.post("/admin/users/{user_id}/level")
+async def admin_update_level(user_id: int, payload: LevelUpdatePayload, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+    if payload.level < 1 or payload.level > MAX_LEVEL:
+        raise HTTPException(400, f"المستوى لازم يكون بين 1 و {MAX_LEVEL}")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "المستخدم غير موجود")
+    user.level = payload.level
+    user.mining_rate_per_hour = mining_rate_for_level(payload.level)
+    await db.commit()
+    return {
+        "success": True,
+        "message": f"تم تحديث مستوى {user.telegram_id} إلى {payload.level}",
+        "new_level": user.level,
+        "new_mining_rate": round(user.mining_rate_per_hour, 4),
+    }
+
+
+@app.get("/admin/withdrawals")
+async def admin_list_withdrawals(status: str = "pending", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+    query = select(WithdrawalRequest, User).join(User, WithdrawalRequest.user_id == User.id)
+    if status and status != "all":
+        query = query.where(WithdrawalRequest.status == status)
+    result = await db.execute(query.order_by(WithdrawalRequest.created_at.desc()).limit(200))
+    rows = result.all()
+    return [{
+        "id": w.id, "user_id": u.id, "telegram_id": u.telegram_id, "username": u.username,
+        "wallet_address": w.wallet_address, "amount_zoro": round(w.amount_zoro, 4),
+        "amount_ton": round(w.amount_ton, 4), "status": w.status, "tx_hash": w.tx_hash,
+        "created_at": w.created_at.isoformat() if w.created_at else None,
+    } for w, u in rows]
+
+
+class PaidPayload(BaseModel):
+    tx_hash: str = ""
+
+
+@app.post("/admin/withdrawals/{withdrawal_id}/paid")
+async def admin_mark_paid(withdrawal_id: int, payload: PaidPayload, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+    withdrawal = await db.get(WithdrawalRequest, withdrawal_id)
+    if not withdrawal:
+        raise HTTPException(404, "طلب السحب غير موجود")
+    if withdrawal.status == "paid":
+        raise HTTPException(400, "الطلب مدفوع بالفعل")
+    withdrawal.status = "paid"
+    withdrawal.tx_hash = payload.tx_hash or None
+    withdrawal.processed_at = datetime.utcnow()
+    await db.commit()
+    return {"success": True, "message": "تم تعليم الطلب كمدفوع"}
+
+
+@app.post("/admin/withdrawals/{withdrawal_id}/reject")
+async def admin_reject_withdrawal(withdrawal_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+    withdrawal = await db.get(WithdrawalRequest, withdrawal_id)
+    if not withdrawal:
+        raise HTTPException(404, "طلب السحب غير موجود")
+    if withdrawal.status != "pending":
+        raise HTTPException(400, "الطلب اتعالج بالفعل")
+    user = await db.get(User, withdrawal.user_id)
+    if user:
+        user.holding_balance += withdrawal.amount_zoro
+    withdrawal.status = "rejected"
+    withdrawal.processed_at = datetime.utcnow()
+    await db.commit()
+    return {"success": True, "message": "تم رفض الطلب وإرجاع الرصيد للمستخدم"}
