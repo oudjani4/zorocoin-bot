@@ -654,6 +654,13 @@ class TaskTitleUpdate(BaseModel):
     title: str
 
 
+@app.get("/admin/tasks")
+async def admin_list_tasks(db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+    result = await db.execute(select(RequiredTask))
+    tasks = result.scalars().all()
+    return [{"id": t.id, "title": t.title, "channel": t.channel_username} for t in tasks]
+
+
 @app.post("/admin/tasks/update-titles")
 async def admin_update_task_titles(
     updates: list[TaskTitleUpdate],
