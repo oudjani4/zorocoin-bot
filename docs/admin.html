@@ -555,6 +555,19 @@ function renderUsers(users) {
         <span class="kv-label">Wallet</span>
         <span class="kv-value wallet-value">${u.wallet_address || "—"}</span>
       </div>
+      <div class="kv-row">
+        <span class="kv-label">Upline (Referred by)</span>
+        <span class="kv-value">${u.referred_by ? escapeHtml(u.referred_by.first_name || u.referred_by.username || u.referred_by.telegram_id) + " (ID: " + u.referred_by.telegram_id + ")" : "—"}</span>
+      </div>
+      ${u.referred_by && u.referred_by.wallet_address ? `
+      <div class="kv-row">
+        <span class="kv-label">Upline Wallet</span>
+        <span class="kv-value wallet-value">${u.referred_by.wallet_address}</span>
+      </div>` : ""}
+      <div class="kv-row">
+        <span class="kv-label">Referred Users</span>
+        <span class="kv-value">${u.referred_count || 0}</span>
+      </div>
       <div class="actions">
         <button class="btn-level" onclick="openLevelModal(${u.id}, ${u.level})">تعديل المستوى</button>
         <button class="btn-reset" onclick="resetUser(${u.id}, '${escapeHtml(u.first_name || u.username || u.telegram_id)}')">تصفير الرصيد</button>

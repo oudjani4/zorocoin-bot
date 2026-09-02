@@ -684,17 +684,49 @@ async def admin_list_users(search: str = "", db: AsyncSession = Depends(get_db),
         s = search.strip()
         if s.lstrip("-").isdigit():
             query = query.where(User.telegram_id == int(s))
+        elif s.startswith("@"):
+            query = query.where(User.username.ilike(f"%{s[1:]}%"))
         else:
-            query = query.where(User.wallet_address.ilike(f"%{s}%"))
+            query = query.where(
+                (User.wallet_address.ilike(f"%{s}%")) |
+                (User.username.ilike(f"%{s}%")) |
+                (User.first_name.ilike(f"%{s}%"))
+            )
     result = await db.execute(query.order_by(User.id.desc()).limit(100))
     users = result.scalars().all()
-    return [{
-        "id": u.id, "telegram_id": u.telegram_id, "username": u.username,
-        "first_name": u.first_name, "wallet_address": u.wallet_address,
-        "level": u.level, "pool_balance": round(u.pool_balance, 4),
-        "holding_balance": round(u.holding_balance, 4),
-        "created_at": u.created_at.isoformat() if u.created_at else None,
-    } for u in users]
+
+    # Build referrer lookup (upline) in one extra query instead of hitting the DB per user.
+    referrer_ids = {u.referred_by_id for u in users if u.referred_by_id}
+    referrers = {}
+    if referrer_ids:
+        ref_result = await db.execute(select(User).where(User.id.in_(referrer_ids)))
+        referrers = {r.id: r for r in ref_result.scalars().all()}
+
+    counts_result = await db.execute(select(User.referred_by_id))
+    referred_counts = {}
+    for (rid,) in counts_result.all():
+        if rid:
+            referred_counts[rid] = referred_counts.get(rid, 0) + 1
+
+    out = []
+    for u in users:
+        referrer = referrers.get(u.referred_by_id) if u.referred_by_id else None
+        out.append({
+            "id": u.id, "telegram_id": u.telegram_id, "username": u.username,
+            "first_name": u.first_name, "wallet_address": u.wallet_address,
+            "level": u.level, "pool_balance": round(u.pool_balance, 4),
+            "holding_balance": round(u.holding_balance, 4),
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "referral_code": u.referral_code,
+            "referred_by": (
+                {"id": referrer.id, "telegram_id": referrer.telegram_id,
+                 "username": referrer.username, "first_name": referrer.first_name,
+                 "wallet_address": referrer.wallet_address}
+                if referrer else None
+            ),
+            "referred_count": referred_counts.get(u.id, 0),
+        })
+    return out
 
 
 @app.post("/admin/users/{user_id}/reset")
