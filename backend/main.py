@@ -559,6 +559,20 @@ async def verify_level_upgrade(
     db.add(ProcessedPayment(
         tx_hash=tx_hash, user_id=user.id, nonce=pending.nonce, amount_ton=pending.price_ton,
     ))
+
+    # ---------------------------------------------------------------
+    # عمولة الإحالة: لو المستخدم ده جه عن طريق إحالة حد تاني، المُحيل
+    # ياخد فورًا 50% من قيمة الترقية (بعد تحويلها من TON لـ ZORO) في
+    # Holding Balance بتاعه مباشرة، جاهزة للسحب.
+    # ---------------------------------------------------------------
+    referral_bonus_zoro = 0.0
+    if user.referred_by_id:
+        referrer = await db.get(User, user.referred_by_id)
+        if referrer:
+            upgrade_value_zoro = pending.price_ton * ZORO_TO_TON_RATE
+            referral_bonus_zoro = round(upgrade_value_zoro * 0.5, 4)
+            referrer.holding_balance += referral_bonus_zoro
+
     await db.commit()
 
     return {
