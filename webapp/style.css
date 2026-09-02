@@ -416,3 +416,30 @@ body {
   border: none;
   border-radius: 10px;
 }
+
+
+/* ===== Zoro background image ===== */
+body {
+  background: #0e0d0b;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(14, 13, 11, 0.88), rgba(14, 13, 11, 0.92)),
+    url("assets/bg-dispenser.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+}
+/* ===== End Zoro background image ===== */
