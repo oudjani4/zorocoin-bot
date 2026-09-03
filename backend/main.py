@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, init_db, AsyncSessionLocal
-from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest
+from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest, VideoTaskSubmission
 from auth import get_current_telegram_user
 
 load_dotenv()
@@ -809,3 +809,103 @@ async def admin_reject_withdrawal(withdrawal_id: int, db: AsyncSession = Depends
     withdrawal.processed_at = datetime.utcnow()
     await db.commit()
     return {"success": True, "message": "Request rejected and balance returned to user"}
+
+
+class VideoSubmitPayload(BaseModel):
+    youtube_url: str
+
+
+@app.post("/api/submit-video-task")
+async def submit_video_task(
+    payload: VideoSubmitPayload,
+    tg_user: dict = Depends(get_current_telegram_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await get_or_create_user(db, tg_user)
+
+    existing_result = await db.execute(
+        select(VideoTaskSubmission).where(
+            VideoTaskSubmission.user_id == user.id,
+            VideoTaskSubmission.status == "pending",
+        )
+    )
+    if existing_result.scalar_one_or_none():
+        raise HTTPException(400, "You already have a pending submission. Wait for admin review.")
+
+    if "youtube.com" not in payload.youtube_url and "youtu.be" not in payload.youtube_url:
+        raise HTTPException(400, "Please submit a valid YouTube link.")
+
+    db.add(VideoTaskSubmission(user_id=user.id, youtube_url=payload.youtube_url))
+    await db.commit()
+    return {"status": "submitted"}
+
+
+@app.get("/api/my-video-task")
+async def my_video_task(
+    tg_user: dict = Depends(get_current_telegram_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await get_or_create_user(db, tg_user)
+    result = await db.execute(
+        select(VideoTaskSubmission)
+        .where(VideoTaskSubmission.user_id == user.id)
+        .order_by(VideoTaskSubmission.submitted_at.desc())
+    )
+    latest = result.scalars().first()
+    if not latest:
+        return {"status": None}
+    return {"status": latest.status, "youtube_url": latest.youtube_url}
+
+
+@app.get("/admin/video-submissions")
+async def admin_list_video_submissions(
+    status: str = "pending", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
+):
+    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.status == status))
+    subs = result.scalars().all()
+    output = []
+    for s in subs:
+        user_result = await db.execute(select(User).where(User.id == s.user_id))
+        u = user_result.scalar_one_or_none()
+        output.append({
+            "id": s.id,
+            "telegram_id": u.telegram_id if u else None,
+            "username": u.username if u else None,
+            "youtube_url": s.youtube_url,
+            "submitted_at": s.submitted_at.isoformat(),
+        })
+    return output
+
+
+@app.post("/admin/video-submissions/{submission_id}/approve")
+async def admin_approve_video_submission(
+    submission_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
+):
+    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.id == submission_id))
+    sub = result.scalar_one_or_none()
+    if not sub or sub.status != "pending":
+        raise HTTPException(404, "Submission not found or already reviewed")
+
+    user_result = await db.execute(select(User).where(User.id == sub.user_id))
+    user = user_result.scalar_one_or_none()
+    user.pool_balance += sub.reward_amount
+
+    sub.status = "approved"
+    sub.reviewed_at = datetime.utcnow()
+    await db.commit()
+    return {"status": "approved", "credited": sub.reward_amount}
+
+
+@app.post("/admin/video-submissions/{submission_id}/reject")
+async def admin_reject_video_submission(
+    submission_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
+):
+    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.id == submission_id))
+    sub = result.scalar_one_or_none()
+    if not sub or sub.status != "pending":
+        raise HTTPException(404, "Submission not found or already reviewed")
+
+    sub.status = "rejected"
+    sub.reviewed_at = datetime.utcnow()
+    await db.commit()
+    return {"status": "rejected"}

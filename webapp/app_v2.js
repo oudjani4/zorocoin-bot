@@ -191,6 +191,8 @@ function render(data) {
   clearInterval(taskCooldownTimer);
   taskCooldownTimer = setInterval(renderTaskButtons, 1000);
 
+  loadSpecialTask();
+
   // ---- Miner (levels) ----
   document.getElementById("minerCurrentLevel").textContent = data.level;
   document.getElementById("minerMaxLevel").textContent = data.max_level;
@@ -555,3 +557,56 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// ---------- Special Task: video submission ----------
+async function loadSpecialTask() {
+  const actionEl = document.getElementById("specialTaskAction");
+  if (!actionEl) return;
+  try {
+    const res = await apiGet("/api/my-video-task");
+    renderSpecialTask(res.status, res.youtube_url);
+  } catch (e) {
+    renderSpecialTask(null);
+  }
+}
+
+function renderSpecialTask(status, youtubeUrl) {
+  const actionEl = document.getElementById("specialTaskAction");
+  if (!actionEl) return;
+
+  if (status === "pending") {
+    actionEl.innerHTML = `<span class="task-cooldown">⏳ Under review</span>`;
+  } else if (status === "approved") {
+    actionEl.innerHTML = `<span class="task-cooldown">✅ Approved</span>`;
+  } else if (status === "rejected") {
+    actionEl.innerHTML = `
+      <input type="text" id="specialTaskInput" placeholder="YouTube link" style="width:100%;margin-bottom:6px;">
+      <button id="specialTaskSubmitBtn">Submit again</button>`;
+    bindSpecialTaskSubmit();
+  } else {
+    actionEl.innerHTML = `
+      <input type="text" id="specialTaskInput" placeholder="YouTube link" style="width:100%;margin-bottom:6px;">
+      <button id="specialTaskSubmitBtn">Submit</button>`;
+    bindSpecialTaskSubmit();
+  }
+}
+
+function bindSpecialTaskSubmit() {
+  const btn = document.getElementById("specialTaskSubmitBtn");
+  if (!btn) return;
+  btn.onclick = async () => {
+    const input = document.getElementById("specialTaskInput");
+    const url = input.value.trim();
+    if (!url) return;
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+    try {
+      await apiPost("/api/submit-video-task", { youtube_url: url });
+      renderSpecialTask("pending");
+    } catch (e) {
+      alert(e.message || "Failed to submit");
+      btn.disabled = false;
+      btn.textContent = "Submit";
+    }
+  };
+}
