@@ -216,6 +216,39 @@ function render(data) {
 
 let taskCooldownTimer = null;
 
+// ---------- Withdraw ----------
+function showSuccess(msg) {
+  const el = document.getElementById("successMsg");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 4000);
+}
+
+document.getElementById("withdrawBtn")?.addEventListener("click", async () => {
+  const input = document.getElementById("withdrawAmount");
+  const amount = parseFloat(input.value);
+  const btn = document.getElementById("withdrawBtn");
+
+  if (!amount || amount <= 0) {
+    showError("من فضلك أدخل كمية صحيحة");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "جاري الإرسال...";
+  try {
+    await apiPost("/api/withdraw", { amount_zoro: amount });
+    showSuccess("✅ تم إرسال طلب السحب بنجاح، هيتراجع من الأدمن قريبًا");
+    input.value = "";
+    await refreshState();
+  } catch (e) {
+    showError(e.message || "فشل إرسال طلب السحب");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "💸 سحب الآن";
+  }
+});
+
 // ---------- مهمة خاصة: إرسال فيديو ----------
 async function loadSpecialTask() {
   const actionEl = document.getElementById("specialTaskAction");
