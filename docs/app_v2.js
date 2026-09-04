@@ -239,7 +239,7 @@ function render(data) {
   // ---- الإحالة ----
   const botUsername = "zorrocoin_bot"; // ⚠️ عدّله لاسم يوزر البوت بتاعك
   const refLink = `https://t.me/${botUsername}?startapp=${data.referral_code}`;
-  document.getElementById("refLinkText").textContent = refLink;
+  try { document.getElementById("refLinkText").textContent = refLink; } catch(e) { tg.showAlert("REF LINK ERROR: " + e.message); }
   window._refLink = refLink;
 }
 
@@ -433,7 +433,7 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     if (e.subscriptionRequired) {
       showGateScreen(e.missingChannels);
     } else {
-      showError("تعذر الاتصال بالسيرفر: " + e.message);
+      showError("تعذر الاتصال بالسيرفر: " + e.message); tg.showAlert("INIT ERROR: " + e.message + " | " + (e.stack || ""));
     }
   }
 })();
