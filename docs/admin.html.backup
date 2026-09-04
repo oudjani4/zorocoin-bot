@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zoro Admin</title>
+<style>
+  :root {
+    --bg: #0e0d0b;
+    --panel: #17140f;
+    --panel-2: #1f1a13;
+    --border: #2c2418;
+    --gold: #e8b93f;
+    --gold-dim: #a8863a;
+    --text: #ece7db;
+    --text-dim: #948c78;
+    --green: #4caf6a;
+    --red: #d9534f;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+  }
+
+  /* ---------- Login ---------- */
+  #loginScreen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .login-box {
+    width: 100%;
+    max-width: 340px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 24px;
+  }
+
+  .login-box h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+    color: var(--gold);
+  }
+
+  .login-box p {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin: 0 0 20px;
+  }
+
+  input {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 12px;
+    border-radius: 6px;
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--gold-dim);
+  }
+
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 11px 14px;
+    font-family: var(--font);
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--gold);
+    color: #1a1408;
+    margin-top: 6px;
+  }
+
+  .btn-primary:active { opacity: 0.85; }
+
+  #loginError {
+    color: var(--red);
+    font-size: 13px;
+    margin-top: 10px;
+    min-height: 16px;
+  }
+
+  /* ---------- App shell ---------- */
+  #app { display: none; padding-bottom: 40px; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+
+  header h1 {
+    font-size: 17px;
+    margin: 0;
+    color: var(--gold);
+  }
+
+  #logoutBtn {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+
+  nav {
+    display: flex;
+    gap: 2px;
+    padding: 10px 14px 0;
+  }
+
+  .tab {
+    flex: 1;
+    background: transparent;
+    color: var(--text-dim);
+    padding: 11px 8px;
+    font-size: 13px;
+    border-bottom: 2px solid transparent;
+  }
+
+  .tab.active {
+    color: var(--gold);
+    border-bottom: 2px solid var(--gold);
+  }
+
+  section.view { display: none; padding: 16px; }
+  section.view.active { display: block; }
+
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .toolbar input {
+    margin-bottom: 0;
+    flex: 1;
+  }
+
+  .toolbar button {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+  }
+
+  .chip {
+    background: var(--panel-2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 7px 13px;
+    font-size: 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .chip.active {
+    background: var(--gold);
+    color: #1a1408;
+    border-color: var(--gold);
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .card-id {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .badge-level { background: rgba(232,185,63,0.15); color: var(--gold); }
+  .badge-pending { background: rgba(232,185,63,0.15); color: var(--gold); }
+  .badge-paid { background: rgba(76,175,106,0.15); color: var(--green); }
+  .badge-rejected { background: rgba(217,83,79,0.15); color: var(--red); }
+
+  .kv-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .kv-row:last-of-type { border-bottom: none; }
+
+  .kv-label { color: var(--text-dim); }
+  .kv-value { color: var(--text); font-family: monospace; }
+  .kv-value.gold { color: var(--gold); font-weight: 600; font-family: var(--font); }
+
+  .wallet-value {
+    font-family: monospace;
+    font-size: 11px;
+    word-break: break-all;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .actions button {
+    flex: 1;
+    min-width: 90px;
+    font-size: 12px;
+    padding: 9px 10px;
+  }
+
+  .btn-reset { background: rgba(217,83,79,0.12); color: var(--red); border: 1px solid rgba(217,83,79,0.3); }
+  .btn-level { background: rgba(232,185,63,0.12); color: var(--gold); border: 1px solid rgba(232,185,63,0.3); }
+  .btn-paid { background: rgba(76,175,106,0.12); color: var(--green); border: 1px solid rgba(76,175,106,0.3); }
+  .btn-reject { background: rgba(217,83,79,0.12); color: var(--red); border: 1px solid rgba(217,83,79,0.3); }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 50px 20px;
+    font-size: 13px;
+  }
+
+  .loading {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 30px;
+    font-size: 13px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    max-width: 90%;
+    text-align: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .toast.show { opacity: 1; }
+  .toast.error { border-color: rgba(217,83,79,0.4); color: #f2a09d; }
+  .toast.success { border-color: rgba(76,175,106,0.4); color: #a8dcb5; }
+
+  /* Modal for level edit */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: flex-end;
+    z-index: 50;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px 14px 0 0;
+    padding: 20px;
+    width: 100%;
+  }
+
+  .modal h3 {
+    margin: 0 0 14px;
+    font-size: 15px;
+    color: var(--gold);
+  }
+
+  .modal .actions { margin-top: 14px; }
+  .btn-cancel { background: var(--panel-2); color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-confirm { background: var(--gold); color: #1a1408; }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>لوحة تحكم Zoro</h1>
+    <p>سجّل دخولك للمتابعة</p>
+    <input type="text" id="loginUser" placeholder="اسم المستخدم" autocomplete="username">
+    <input type="password" id="loginPass" placeholder="كلمة المرور" autocomplete="current-password">
+    <button class="btn-primary" id="loginBtn">دخول</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <header>
+    <h1>لوحة تحكم Zoro</h1>
+    <button id="logoutBtn">خروج</button>
+  </header>
+
+  <nav>
+    <button class="tab active" data-view="usersView">المستخدمين</button>
+    <button class="tab" data-view="withdrawalsView">طلبات السحب</button>
+  </nav>
+
+  <!-- ---- Users tab ---- -->
+  <section class="view active" id="usersView">
+    <div class="toolbar">
+      <input type="text" id="userSearch" placeholder="ابحث بالمعرف أو المحفظة...">
+      <button id="userSearchBtn">بحث</button>
+    </div>
+    <div id="usersList"></div>
+  </section>
+
+  <!-- ---- Withdrawals tab ---- -->
+  <section class="view" id="withdrawalsView">
+    <div class="filter-row">
+      <button class="chip active" data-status="pending">قيد الانتظار</button>
+      <button class="chip" data-status="paid">مدفوعة</button>
+      <button class="chip" data-status="rejected">مرفوضة</button>
+      <button class="chip" data-status="all">الكل</button>
+    </div>
+    <div id="withdrawalsList"></div>
+  </section>
+</div>
+
+<!-- Level edit modal -->
+<div class="modal-overlay" id="levelModal">
+  <div class="modal">
+    <h3>تعديل المستوى</h3>
+    <input type="number" id="levelInput" min="1" max="100" placeholder="المستوى الجديد">
+    <div class="actions">
+      <button class="btn-cancel" id="levelCancel">إلغاء</button>
+      <button class="btn-confirm" id="levelConfirm">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = "https://zoro-backend-5jyv.onrender.com";
+
+let authHeader = null;
+let currentLevelUserId = null;
+
+// ---------- Auth ----------
+document.getElementById("loginBtn").addEventListener("click", login);
+document.getElementById("loginPass").addEventListener("keydown", e => {
+  if (e.key === "Enter") login();
+});
+
+async function login() {
+  const user = document.getElementById("loginUser").value.trim();
+  const pass = document.getElementById("loginPass").value;
+  const errEl = document.getElementById("loginError");
+  errEl.textContent = "";
+
+  if (!user || !pass) {
+    errEl.textContent = "اكتب اسم المستخدم وكلمة المرور";
+    return;
+  }
+
+  const header = "Basic " + btoa(user + ":" + pass);
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/users`, {
+      headers: { "Authorization": header }
+    });
+    if (res.status === 401) {
+      errEl.textContent = "بيانات الدخول غير صحيحة";
+      return;
+    }
+    if (!res.ok) {
+      errEl.textContent = "تعذر الاتصال بالسيرفر";
+      return;
+    }
+    authHeader = header;
+    sessionStorage.setItem("zoro_admin_auth", header);
+    showApp();
+  } catch (e) {
+    errEl.textContent = "تعذر الاتصال بالسيرفر، حاول مرة أخرى";
+  }
+}
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  authHeader = null;
+  sessionStorage.removeItem("zoro_admin_auth");
+  document.getElementById("app").style.display = "none";
+  document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("loginPass").value = "";
+});
+
+function showApp() {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  loadUsers();
+}
+
+// Restore session
+const saved = sessionStorage.getItem("zoro_admin_auth");
+if (saved) {
+  authHeader = saved;
+  showApp();
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.view).classList.add("active");
+    if (tab.dataset.view === "withdrawalsView") loadWithdrawals();
+  });
+});
+
+// ---------- Toast ----------
+function showToast(msg, type) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (type ? " " + type : "");
+  setTimeout(() => { t.className = "toast"; }, 2800);
+}
+
+// ---------- API helper ----------
+async function apiCall(path, options = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Authorization": authHeader,
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  if (res.status === 401) {
+    showToast("انتهت الجلسة، سجّل دخول تاني", "error");
+    document.getElementById("logoutBtn").click();
+    throw new Error("unauthorized");
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || "حدث خطأ");
+  }
+  return data;
+}
+
+// ---------- Users ----------
+document.getElementById("userSearchBtn").addEventListener("click", () => {
+  loadUsers(document.getElementById("userSearch").value.trim());
+});
+document.getElementById("userSearch").addEventListener("keydown", e => {
+  if (e.key === "Enter") loadUsers(document.getElementById("userSearch").value.trim());
+});
+
+async function loadUsers(search = "") {
+  const list = document.getElementById("usersList");
+  list.innerHTML = '<div class="loading">جارِ التحميل...</div>';
+  try {
+    const q = search ? `?search=${encodeURIComponent(search)}` : "";
+    const users = await apiCall(`/admin/users${q}`);
+    renderUsers(users);
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state">تعذر تحميل المستخدمين</div>`;
+  }
+}
+
+function renderUsers(users) {
+  const list = document.getElementById("usersList");
+  if (!users.length) {
+    list.innerHTML = '<div class="empty-state">لا يوجد مستخدمين مطابقين</div>';
+    return;
+  }
+  list.innerHTML = users.map(u => `
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <div class="card-name">${escapeHtml(u.first_name || u.username || "بدون اسم")}</div>
+          <div class="card-id">ID: ${u.telegram_id}</div>
+        </div>
+        <span class="badge badge-level">Lvl ${u.level}</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-label">Pool Balance</span>
+        <span class="kv-value gold">${u.pool_balance} ZORO</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-label">Holding Balance</span>
+        <span class="kv-value gold">${u.holding_balance} ZORO</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-label">Wallet</span>
+        <span class="kv-value wallet-value">${u.wallet_address || "—"}</span>
+      </div>
+      <div class="actions">
+        <button class="btn-level" onclick="openLevelModal(${u.id}, ${u.level})">تعديل المستوى</button>
+        <button class="btn-reset" onclick="resetUser(${u.id}, '${escapeHtml(u.first_name || u.username || u.telegram_id)}')">تصفير الرصيد</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+async function resetUser(id, name) {
+  if (!confirm(`متأكد إنك عايز تصفّر رصيد "${name}"؟ الإجراء ده مايتراجعش.`)) return;
+  try {
+    const res = await apiCall(`/admin/users/${id}/reset`, { method: "POST" });
+    showToast(res.message || "تم التصفير", "success");
+    loadUsers(document.getElementById("userSearch").value.trim());
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
+function openLevelModal(userId, currentLevel) {
+  currentLevelUserId = userId;
+  document.getElementById("levelInput").value = currentLevel;
+  document.getElementById("levelModal").classList.add("show");
+}
+
+document.getElementById("levelCancel").addEventListener("click", () => {
+  document.getElementById("levelModal").classList.remove("show");
+});
+
+document.getElementById("levelConfirm").addEventListener("click", async () => {
+  const newLevel = parseInt(document.getElementById("levelInput").value, 10);
+  if (!newLevel || newLevel < 1 || newLevel > 100) {
+    showToast("اكتب مستوى صحيح بين 1 و 100", "error");
+    return;
+  }
+  try {
+    const res = await apiCall(`/admin/users/${currentLevelUserId}/level`, {
+      method: "POST",
+      body: JSON.stringify({ level: newLevel })
+    });
+    showToast(res.message || "تم التحديث", "success");
+    document.getElementById("levelModal").classList.remove("show");
+    loadUsers(document.getElementById("userSearch").value.trim());
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+});
+
+// ---------- Withdrawals ----------
+let currentStatus = "pending";
+
+document.querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    currentStatus = chip.dataset.status;
+    loadWithdrawals();
+  });
+});
+
+async function loadWithdrawals() {
+  const list = document.getElementById("withdrawalsList");
+  list.innerHTML = '<div class="loading">جارِ التحميل...</div>';
+  try {
+    const items = await apiCall(`/admin/withdrawals?status=${currentStatus}`);
+    renderWithdrawals(items);
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state">تعذر تحميل الطلبات</div>`;
+  }
+}
+
+function renderWithdrawals(items) {
+  const list = document.getElementById("withdrawalsList");
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state">لا توجد طلبات هنا</div>';
+    return;
+  }
+  const badgeClass = { pending: "badge-pending", paid: "badge-paid", rejected: "badge-rejected" };
+  const statusLabel = { pending: "قيد الانتظار", paid: "مدفوع", rejected: "مرفوض" };
+
+  list.innerHTML = items.map(w => `
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <div class="card-name">${escapeHtml(w.first_name || w.username || w.telegram_id)}</div>
+          <div class="card-id">ID: ${w.telegram_id}</div>
+        </div>
+        <span class="badge ${badgeClass[w.status] || 'badge-pending'}">${statusLabel[w.status] || w.status}</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-label">المبلغ</span>
+        <span class="kv-value gold">${w.amount_zoro} ZORO (${w.amount_ton} TON)</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-label">المحفظة</span>
+        <span class="kv-value wallet-value">${w.wallet_address}</span>
+      </div>
+      ${w.tx_hash ? `
+      <div class="kv-row">
+        <span class="kv-label">Tx Hash</span>
+        <span class="kv-value wallet-value">${w.tx_hash}</span>
+      </div>` : ""}
+      ${w.status === "pending" ? `
+      <div class="actions">
+        <button class="btn-paid" onclick="markPaid(${w.id})">تعليم كمدفوع</button>
+        <button class="btn-reject" onclick="rejectWithdrawal(${w.id})">رفض</button>
+      </div>` : ""}
+    </div>
+  `).join("");
+}
+
+async function markPaid(id) {
+  const txHash = prompt("رقم المعاملة (Tx Hash) - اختياري:", "") || "";
+  try {
+    const res = await apiCall(`/admin/withdrawals/${id}/paid`, {
+      method: "POST",
+      body: JSON.stringify({ tx_hash: txHash })
+    });
+    showToast(res.message || "تم التعليم كمدفوع", "success");
+    loadWithdrawals();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
+async function rejectWithdrawal(id) {
+  if (!confirm("متأكد إنك عايز ترفض الطلب ده؟ هيترجع الرصيد للمستخدم.")) return;
+  try {
+    const res = await apiCall(`/admin/withdrawals/${id}/reject`, { method: "POST" });
+    showToast(res.message || "تم الرفض وإرجاع الرصيد", "success");
+    loadWithdrawals();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+</script>
+</body>
+</html>
