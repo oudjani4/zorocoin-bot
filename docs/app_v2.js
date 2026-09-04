@@ -27,7 +27,7 @@ tonConnectUI.onStatusChange(async (wallet) => {
       await apiPost("/api/link-wallet", { wallet_address: address });
       await refreshState();
     } catch (e) {
-      tg.showAlert("خطأ في ربط المحفظة: " + e.message);
+      tg.showAlert("خطأ في ربط المحفظة: " + e.message + "\n" + (e.stack || "no stack"));
       console.error("link-wallet error:", e);
     }
   }
