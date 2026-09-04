@@ -11,7 +11,6 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBAPP_URL = os.getenv("WEBAPP_URL")
 REQUIRED_CHANNELS = [c.strip() for c in os.getenv("REQUIRED_CHANNELS", "").split(",") if c.strip()]
-
 API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 logging.basicConfig(level=logging.INFO)
@@ -143,7 +142,7 @@ def process_update(update: dict):
             handle_check_sub_callback(callback)
 
 
-def polling_loop():
+def holding_loop():
     offset = 0
     log.info("Bot polling started")
     while True:
@@ -191,7 +190,7 @@ async def main():
 
     await start_web_server()
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, polling_loop)
+    await loop.run_in_executor(None, holding_loop)
 
 
 if __name__ == "__main__":
