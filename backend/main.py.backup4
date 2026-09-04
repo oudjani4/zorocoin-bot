@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, init_db, AsyncSessionLocal
-from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest, VideoTaskSubmission
+from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest
 from auth import get_current_telegram_user
 
 load_dotenv()
@@ -370,28 +370,6 @@ async def mine_claim(
     await db.commit()
     return {"ok": True, "claimed": mined, "pool_balance": round(user.pool_balance, 4)}
 
-@app.post("/api/transfer-to-holding")
-async def transfer_to_holding(
-    tg_user: dict = Depends(get_current_telegram_user),
-    db: AsyncSession = Depends(get_db),
-):
-    user = await get_or_create_user(db, tg_user)
-
-    amount = user.pool_balance
-    if amount <= 0:
-        raise HTTPException(400, "No balance available to transfer")
-
-    user.pool_balance = 0.0
-    user.holding_balance += amount
-    await db.commit()
-
-    return {
-        "success": True,
-        "transferred": round(amount, 4),
-        "new_pool_balance": round(user.pool_balance, 4),
-        "new_holding_balance": round(user.holding_balance, 4),
-    }
-
 
 @app.get("/api/leaderboard")
 async def leaderboard(db: AsyncSession = Depends(get_db)):
@@ -671,34 +649,6 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     return True
 
 
-class TaskTitleUpdate(BaseModel):
-    id: int
-    title: str
-
-
-@app.get("/admin/tasks")
-async def admin_list_tasks(db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
-    result = await db.execute(select(RequiredTask))
-    tasks = result.scalars().all()
-    return [{"id": t.id, "title": t.title, "channel": t.channel_username} for t in tasks]
-
-
-@app.post("/admin/tasks/update-titles")
-async def admin_update_task_titles(
-    updates: list[TaskTitleUpdate],
-    db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_admin),
-):
-    updated = []
-    for u in updates:
-        task = await db.get(RequiredTask, u.id)
-        if task:
-            task.title = u.title
-            updated.append(u.id)
-    await db.commit()
-    return {"success": True, "updated_ids": updated}
-
-
 @app.get("/admin/users")
 async def admin_list_users(search: str = "", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     query = select(User)
@@ -706,49 +656,17 @@ async def admin_list_users(search: str = "", db: AsyncSession = Depends(get_db),
         s = search.strip()
         if s.lstrip("-").isdigit():
             query = query.where(User.telegram_id == int(s))
-        elif s.startswith("@"):
-            query = query.where(User.username.ilike(f"%{s[1:]}%"))
         else:
-            query = query.where(
-                (User.wallet_address.ilike(f"%{s}%")) |
-                (User.username.ilike(f"%{s}%")) |
-                (User.first_name.ilike(f"%{s}%"))
-            )
+            query = query.where(User.wallet_address.ilike(f"%{s}%"))
     result = await db.execute(query.order_by(User.id.desc()).limit(100))
     users = result.scalars().all()
-
-    # Build referrer lookup (upline) in one extra query instead of hitting the DB per user.
-    referrer_ids = {u.referred_by_id for u in users if u.referred_by_id}
-    referrers = {}
-    if referrer_ids:
-        ref_result = await db.execute(select(User).where(User.id.in_(referrer_ids)))
-        referrers = {r.id: r for r in ref_result.scalars().all()}
-
-    counts_result = await db.execute(select(User.referred_by_id))
-    referred_counts = {}
-    for (rid,) in counts_result.all():
-        if rid:
-            referred_counts[rid] = referred_counts.get(rid, 0) + 1
-
-    out = []
-    for u in users:
-        referrer = referrers.get(u.referred_by_id) if u.referred_by_id else None
-        out.append({
-            "id": u.id, "telegram_id": u.telegram_id, "username": u.username,
-            "first_name": u.first_name, "wallet_address": u.wallet_address,
-            "level": u.level, "pool_balance": round(u.pool_balance, 4),
-            "holding_balance": round(u.holding_balance, 4),
-            "created_at": u.created_at.isoformat() if u.created_at else None,
-            "referral_code": u.referral_code,
-            "referred_by": (
-                {"id": referrer.id, "telegram_id": referrer.telegram_id,
-                 "username": referrer.username, "first_name": referrer.first_name,
-                 "wallet_address": referrer.wallet_address}
-                if referrer else None
-            ),
-            "referred_count": referred_counts.get(u.id, 0),
-        })
-    return out
+    return [{
+        "id": u.id, "telegram_id": u.telegram_id, "username": u.username,
+        "first_name": u.first_name, "wallet_address": u.wallet_address,
+        "level": u.level, "pool_balance": round(u.pool_balance, 4),
+        "holding_balance": round(u.holding_balance, 4),
+        "created_at": u.created_at.isoformat() if u.created_at else None,
+    } for u in users]
 
 
 @app.post("/admin/users/{user_id}/reset")
@@ -831,103 +749,3 @@ async def admin_reject_withdrawal(withdrawal_id: int, db: AsyncSession = Depends
     withdrawal.processed_at = datetime.utcnow()
     await db.commit()
     return {"success": True, "message": "Request rejected and balance returned to user"}
-
-
-class VideoSubmitPayload(BaseModel):
-    youtube_url: str
-
-
-@app.post("/api/submit-video-task")
-async def submit_video_task(
-    payload: VideoSubmitPayload,
-    tg_user: dict = Depends(get_current_telegram_user),
-    db: AsyncSession = Depends(get_db),
-):
-    user = await get_or_create_user(db, tg_user)
-
-    existing_result = await db.execute(
-        select(VideoTaskSubmission).where(
-            VideoTaskSubmission.user_id == user.id,
-            VideoTaskSubmission.status == "pending",
-        )
-    )
-    if existing_result.scalar_one_or_none():
-        raise HTTPException(400, "You already have a pending submission. Wait for admin review.")
-
-    if "youtube.com" not in payload.youtube_url and "youtu.be" not in payload.youtube_url:
-        raise HTTPException(400, "Please submit a valid YouTube link.")
-
-    db.add(VideoTaskSubmission(user_id=user.id, youtube_url=payload.youtube_url))
-    await db.commit()
-    return {"status": "submitted"}
-
-
-@app.get("/api/my-video-task")
-async def my_video_task(
-    tg_user: dict = Depends(get_current_telegram_user),
-    db: AsyncSession = Depends(get_db),
-):
-    user = await get_or_create_user(db, tg_user)
-    result = await db.execute(
-        select(VideoTaskSubmission)
-        .where(VideoTaskSubmission.user_id == user.id)
-        .order_by(VideoTaskSubmission.submitted_at.desc())
-    )
-    latest = result.scalars().first()
-    if not latest:
-        return {"status": None}
-    return {"status": latest.status, "youtube_url": latest.youtube_url}
-
-
-@app.get("/admin/video-submissions")
-async def admin_list_video_submissions(
-    status: str = "pending", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
-):
-    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.status == status))
-    subs = result.scalars().all()
-    output = []
-    for s in subs:
-        user_result = await db.execute(select(User).where(User.id == s.user_id))
-        u = user_result.scalar_one_or_none()
-        output.append({
-            "id": s.id,
-            "telegram_id": u.telegram_id if u else None,
-            "username": u.username if u else None,
-            "youtube_url": s.youtube_url,
-            "submitted_at": s.submitted_at.isoformat(),
-        })
-    return output
-
-
-@app.post("/admin/video-submissions/{submission_id}/approve")
-async def admin_approve_video_submission(
-    submission_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
-):
-    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.id == submission_id))
-    sub = result.scalar_one_or_none()
-    if not sub or sub.status != "pending":
-        raise HTTPException(404, "Submission not found or already reviewed")
-
-    user_result = await db.execute(select(User).where(User.id == sub.user_id))
-    user = user_result.scalar_one_or_none()
-    user.pool_balance += sub.reward_amount
-
-    sub.status = "approved"
-    sub.reviewed_at = datetime.utcnow()
-    await db.commit()
-    return {"status": "approved", "credited": sub.reward_amount}
-
-
-@app.post("/admin/video-submissions/{submission_id}/reject")
-async def admin_reject_video_submission(
-    submission_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
-):
-    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.id == submission_id))
-    sub = result.scalar_one_or_none()
-    if not sub or sub.status != "pending":
-        raise HTTPException(404, "Submission not found or already reviewed")
-
-    sub.status = "rejected"
-    sub.reviewed_at = datetime.utcnow()
-    await db.commit()
-    return {"status": "rejected"}

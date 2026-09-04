@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, init_db, AsyncSessionLocal
-from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest, VideoTaskSubmission
+from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest
 from auth import get_current_telegram_user
 
 load_dotenv()
@@ -27,10 +27,10 @@ DEFAULT_MINING_RATE = float(os.getenv("MINING_RATE_PER_HOUR", 10))
 MAX_SESSION_HOURS = float(os.getenv("MAX_SESSION_HOURS", 3))
 
 # ---------------------------------------------------------------------------
-# Miner tab: 100-level system, each upgrade is paid in real TON to the treasury wallet.
-# Upgrade price from level L to L+1 = LEVEL_BASE_PRICE_TON + (L-1) * LEVEL_PRICE_INCREMENT_TON
-# i.e: 1 -> 2 = 1.0 TON, 2 -> 3 = 1.5 TON, 3 -> 4 = 2.0 TON ... and so on.
-# Mining rate at level L = DEFAULT_MINING_RATE + (L-1) * LEVEL_MINING_RATE_INCREMENT
+# تبويب Miner: نظام 100 مستوى، كل ترقية بتتدفع TON حقيقي لمحفظة الخزينة.
+# سعر الترقية من مستوى L لـ L+1 = LEVEL_BASE_PRICE_TON + (L-1) * LEVEL_PRICE_INCREMENT_TON
+# يعني: 1 -> 2 = 1.0 TON، 2 -> 3 = 1.5 TON، 3 -> 4 = 2.0 TON ... وهكذا.
+# معدل التعدين عند مستوى L = DEFAULT_MINING_RATE + (L-1) * LEVEL_MINING_RATE_INCREMENT
 # ---------------------------------------------------------------------------
 MAX_LEVEL = int(os.getenv("MAX_LEVEL", 100))
 LEVEL_BASE_PRICE_TON = float(os.getenv("LEVEL_BASE_PRICE_TON", 1.0))
@@ -42,22 +42,22 @@ TONCENTER_BASE_URL = os.getenv("TONCENTER_BASE_URL", "https://toncenter.com/api/
 UPGRADE_REQUEST_TTL_MINUTES = int(os.getenv("UPGRADE_REQUEST_TTL_MINUTES", 30))
 
 # ---------------------------------------------------------------------------
-# Minimum withdrawal - same values used in scripts/distribute_tokens.py
-# (must be kept in sync between both so the number the user sees in
-# the app matches what actually gets applied at distribution time).
+# الحد الأدنى للسحب - نفس القيم المستخدمة في scripts/distribute_tokens.py
+# (لازم تتظبط بنفس القيم في الاتنين عشان الرقم اللي شايفه المستخدم في
+# التطبيق يطابق اللي هيتطبق فعليًا وقت التوزيع).
 # ---------------------------------------------------------------------------
-ZORO_TO_TON_RATE = float(os.getenv("ZORO_TO_TON_RATE", 500))  # 1 TON = how many ZORO
+ZORO_TO_TON_RATE = float(os.getenv("ZORO_TO_TON_RATE", 500))  # 1 TON = كام ZORO
 MIN_WITHDRAWAL_TON = float(os.getenv("MIN_WITHDRAWAL_TON", 0.5))
 MIN_WITHDRAWAL_ZORO = float(os.getenv("MIN_WITHDRAWAL_ZORO", 600))
 
 
 def price_for_level_step(current_level: int) -> float:
-    """Upgrade price from current_level to current_level + 1, in TON."""
+    """سعر الترقية من current_level لـ current_level + 1، بالـ TON."""
     return round(LEVEL_BASE_PRICE_TON + (current_level - 1) * LEVEL_PRICE_INCREMENT_TON, 4)
 
 
 def mining_rate_for_level(level: int) -> float:
-    """Mining rate (ZORO/hour) at a given level."""
+    """معدل التعدين (ZORO/ساعة) عند مستوى معيّن."""
     return round(DEFAULT_MINING_RATE + (level - 1) * LEVEL_MINING_RATE_INCREMENT, 4)
 
 app = FastAPI(title="Zoro Airdrop API")
@@ -77,7 +77,7 @@ async def on_startup():
         result = await db.execute(select(RequiredTask))
         if not result.scalars().first():
             for ch in REQUIRED_CHANNELS_ENV:
-                db.add(RequiredTask(channel_username=ch, title=f"Join {ch}", reward_amount=20))
+                db.add(RequiredTask(channel_username=ch, title=f"اشترك في {ch}", reward_amount=20))
             await db.commit()
 
 
@@ -89,12 +89,12 @@ async def fix_referral_code(
     db: AsyncSession = Depends(get_db),
 ):
     if secret != "zoro-temp-fix-2026":
-        raise HTTPException(403, "Not authorized")
+        raise HTTPException(403, "غير مصرح")
 
     result = await db.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(404, "User not found")
+        raise HTTPException(404, "المستخدم غير موجود")
 
     new_code = gen_referral_code()
     while (await db.execute(select(User).where(User.referral_code == new_code))).scalar_one_or_none():
@@ -110,7 +110,7 @@ def gen_referral_code() -> str:
 
 
 def is_valid_ton_address(address: str) -> bool:
-    """Basic validation of a TON address format (raw or user-friendly)."""
+    """تحقق مبدئي من شكل عنوان TON (raw أو user-friendly)."""
     address = address.strip()
     if address.startswith(("EQ", "UQ")) and len(address) == 48:
         return True
@@ -188,7 +188,7 @@ async def me(
     def task_status(t: RequiredTask):
         c = completions_by_task.get(t.id)
         if not c:
-            return True, None  # claimable, no next-available time yet
+            return True, None  # claimable, مفيش وقت متاح لسه
         next_available = c.last_claimed_at + timedelta(hours=t.cooldown_hours)
         if now >= next_available:
             return True, None
@@ -224,7 +224,7 @@ async def me(
             }
             for t in tasks
         ],
-        # Mining is gated on wallet linking only - tasks are a separate repeatable bonus
+        # التعدين مربوط بربط المحفظة بس - المهام مكافأة إضافية منفصلة قابلة للتكرار
         "can_mine": user.wallet_address is not None,
     }
 
@@ -237,18 +237,18 @@ async def link_wallet(
 ):
     address = body.wallet_address.strip()
     if not is_valid_ton_address(address):
-        raise HTTPException(400, "Invalid TON wallet address")
+        raise HTTPException(400, "عنوان محفظة TON غير صالح")
 
     user = await get_or_create_user(db, tg_user)
 
-    # The wallet is linked only once and cannot be changed afterwards, to protect
-    # against attempts to redirect earnings to a different wallet after mining or referrals.
+    # المحفظة تُربط مرة واحدة فقط ولا يمكن تغييرها بعد ذلك، حماية من محاولات
+    # تحويل الأرباح لمحفظة مختلفة بعد التعدين أو الإحالات.
     if user.wallet_address:
         if user.wallet_address == address:
             return {"ok": True, "wallet_address": user.wallet_address, "already_linked": True}
         raise HTTPException(
             400,
-            "Your wallet is already linked and cannot be changed. Contact support if there is an issue."
+            "محفظتك مربوطة بالفعل ولا يمكن تغييرها. تواصل مع الدعم لو فيه مشكلة."
         )
 
     user.wallet_address = address
@@ -259,13 +259,13 @@ async def link_wallet(
 
 async def is_channel_member(channel_username: str, telegram_user_id: int) -> bool:
     """
-    Actually verifies the user's channel membership via the Telegram Bot API (getChatMember).
-    The bot must be an admin in the channel for this request to succeed (as documented in the README).
+    يتحقق فعليًا من عضوية المستخدم في القناة عبر Telegram Bot API (getChatMember).
+    البوت لازم يكون أدمن في القناة عشان الطلب ده ينجح (زي ما موضّح في الـ README).
     """
     if not BOT_TOKEN:
-        raise HTTPException(500, "BOT_TOKEN is not configured on the server")
+        raise HTTPException(500, "BOT_TOKEN غير مضبوط على السيرفر")
 
-    # Convert any format (full link / @username / username without @) into a valid @username for Telegram
+    # تحويل أي صيغة (رابط كامل / @username / username بدون @) إلى @username صحيح لتيليجرام
     normalized = channel_username.strip()
     normalized = normalized.replace("https://t.me/", "").replace("http://t.me/", "").replace("t.me/", "")
     normalized = normalized.lstrip("@")
@@ -279,12 +279,12 @@ async def is_channel_member(channel_username: str, telegram_user_id: int) -> boo
         data = resp.json()
 
     if not data.get("ok"):
-        # Channel does not exist, bot is not an admin there, or another Telegram error
+        # القناة مش موجودة، أو البوت مش أدمن فيها، أو خطأ تاني من تليجرام
         return False
 
     status = data.get("result", {}).get("status", "")
-    # Statuses considered "actual member": creator / administrator / member
-    # (excluded: left, kicked, restricted)
+    # الحالات اللي تعتبر "عضو فعلي": creator / administrator / member
+    # (مستبعدين: left, kicked, restricted)
     return status in ("creator", "administrator", "member")
 
 
@@ -295,21 +295,20 @@ async def claim_task(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Grants the user the task reward after actually verifying their channel
-    subscription via the Telegram Bot API. The task becomes available again
-    after the cooldown period (cooldown_hours).
+    يمنح المستخدم مكافأة المهمة بعد التحقق الفعلي من اشتراكه في القناة عبر
+    Telegram Bot API. المهمة بترجع تتاح تاني بعد فترة التهدئة (cooldown_hours).
     """
     user = await get_or_create_user(db, tg_user)
 
     task_result = await db.execute(select(RequiredTask).where(RequiredTask.id == task_id))
     task = task_result.scalar_one_or_none()
     if not task or not task.is_active:
-        raise HTTPException(404, "Task not found")
+        raise HTTPException(404, "المهمة غير موجودة")
 
     if not await is_channel_member(task.channel_username, user.telegram_id):
         raise HTTPException(
             403,
-            f"You haven't joined {task.channel_username} yet. Join first, then try again.",
+            f"لسه مش مشترك في {task.channel_username}. اشترك الأول وبعدين جرّب تاني.",
         )
 
     existing_result = await db.execute(
@@ -324,7 +323,7 @@ async def claim_task(
         next_available = existing.last_claimed_at + timedelta(hours=task.cooldown_hours)
         if now < next_available:
             remaining = (next_available - now).total_seconds()
-            raise HTTPException(429, f"Task will be available again in {int(remaining // 3600)}h {int((remaining % 3600) // 60)}m")
+            raise HTTPException(429, f"المهمة هتتاح تاني بعد {int(remaining // 3600)}س {int((remaining % 3600) // 60)}د")
         existing.last_claimed_at = now
     else:
         db.add(UserTaskCompletion(user_id=user.id, task_id=task_id, last_claimed_at=now))
@@ -343,10 +342,10 @@ async def mine_start(
     user = await get_or_create_user(db, tg_user)
 
     if not user.wallet_address:
-        raise HTTPException(400, "You need to link your wallet first")
+        raise HTTPException(400, "لازم تربط محفظتك الأول")
 
     if user.mining_started_at is not None:
-        raise HTTPException(400, "Mining is already running")
+        raise HTTPException(400, "التعدين شغال بالفعل")
 
     user.mining_started_at = datetime.utcnow()
     await db.commit()
@@ -361,7 +360,7 @@ async def mine_claim(
     user = await get_or_create_user(db, tg_user)
 
     if user.mining_started_at is None:
-        raise HTTPException(400, "No active mining session")
+        raise HTTPException(400, "مفيش جلسة تعدين شغالة")
 
     mined = calc_pending_mined(user)
     user.pool_balance += mined
@@ -369,28 +368,6 @@ async def mine_claim(
 
     await db.commit()
     return {"ok": True, "claimed": mined, "pool_balance": round(user.pool_balance, 4)}
-
-@app.post("/api/transfer-to-holding")
-async def transfer_to_holding(
-    tg_user: dict = Depends(get_current_telegram_user),
-    db: AsyncSession = Depends(get_db),
-):
-    user = await get_or_create_user(db, tg_user)
-
-    amount = user.pool_balance
-    if amount <= 0:
-        raise HTTPException(400, "No balance available to transfer")
-
-    user.pool_balance = 0.0
-    user.holding_balance += amount
-    await db.commit()
-
-    return {
-        "success": True,
-        "transferred": round(amount, 4),
-        "new_pool_balance": round(user.pool_balance, 4),
-        "new_holding_balance": round(user.holding_balance, 4),
-    }
 
 
 @app.get("/api/leaderboard")
@@ -427,7 +404,7 @@ async def referral_stats(
 
 
 # ---------------------------------------------------------------------------
-# Miner tab (levels system)
+# تبويب Miner (نظام المستويات)
 # ---------------------------------------------------------------------------
 
 @app.get("/api/levels")
@@ -435,14 +412,14 @@ async def list_levels(
     tg_user: dict = Depends(get_current_telegram_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List of all MAX_LEVEL levels with price and rate, plus the user's current level."""
+    """قائمة كل المستويات الـ MAX_LEVEL مع السعر والمعدل، والمستوى الحالي للمستخدم."""
     user = await get_or_create_user(db, tg_user)
     levels = []
     for lvl in range(1, MAX_LEVEL + 1):
         levels.append({
             "level": lvl,
             "mining_rate_per_hour": mining_rate_for_level(lvl),
-            # Upgrade price *for this* level (from the one before it); no price for level 1, it's the default
+            # سعر الترقية *لهذا* المستوى (من اللي قبله)؛ مفيش سعر للمستوى 1 لأنه ديفولت
             "upgrade_price_ton": price_for_level_step(lvl - 1) if lvl > 1 else None,
             "unlocked": lvl <= user.level,
         })
@@ -455,19 +432,18 @@ async def start_level_upgrade(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns payment details (treasury address, amount, and a unique comment) so
-    the frontend can send a TonConnect transaction with them. The actual upgrade
-    only happens after /verify.
+    بيرجّع بيانات الدفع (عنوان الخزينة، المبلغ، وتعليق فريد) عشان الواجهة
+    تبعت معاملة TonConnect بيها. الترقية الفعلية مش بتحصل إلا بعد /verify.
     """
     if not TREASURY_WALLET_ADDRESS:
-        raise HTTPException(500, "Treasury wallet is not configured on the server (TREASURY_WALLET_ADDRESS)")
+        raise HTTPException(500, "محفظة الخزينة مش متظبطة على السيرفر (TREASURY_WALLET_ADDRESS)")
 
     user = await get_or_create_user(db, tg_user)
     if user.level >= MAX_LEVEL:
-        raise HTTPException(400, "You have already reached the maximum level")
+        raise HTTPException(400, "وصلت لأعلى مستوى بالفعل")
 
     price = price_for_level_step(user.level)
-    nonce = secrets.token_hex(8)  # 16 hex chars - placed in the transaction comment so we can find it
+    nonce = secrets.token_hex(8)  # 16 حرف hex - بيتحط في تعليق المعاملة عشان نلاقيها
 
     pending = PendingLevelUpgrade(
         user_id=user.id,
@@ -484,7 +460,7 @@ async def start_level_upgrade(
         "treasury_address": TREASURY_WALLET_ADDRESS,
         "amount_ton": price,
         "amount_nanoton": int(price * 1_000_000_000),
-        # The user/frontend must put this exact comment inside the transaction (comment/text payload)
+        # المستخدم/الواجهة لازم يحطوا التعليق ده بالظبط جوه المعاملة (comment/text payload)
         "comment": f"zoro-lvl:{user.telegram_id}:{user.level + 1}:{nonce}",
         "expires_at": pending.expires_at.isoformat(),
     }
@@ -496,9 +472,8 @@ class VerifyUpgradeBody(BaseModel):
 
 async def find_matching_transaction(sender_address: str, min_amount_nanoton: int, after_ts: int) -> str | None:
     """
-    Searches the treasury wallet's recent transactions for an incoming transaction
-    from the user's wallet with an amount >= required, after the upgrade request
-    was created. Returns the tx_hash if found.
+    بيدور في آخر معاملات محفظة الخزينة عن معاملة واردة من محفظة المستخدم
+    بمبلغ >= المطلوب وبعد وقت إنشاء طلب الترقية. بيرجع tx_hash لو لقاها.
     """
     params = {"address": TREASURY_WALLET_ADDRESS, "limit": 50, "to_lt": 0, "archival": "true"}
     headers = {"X-API-Key": TONCENTER_API_KEY} if TONCENTER_API_KEY else {}
@@ -553,9 +528,8 @@ async def verify_level_upgrade(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Actually confirms the payment arrived on the TON network before upgrading
-    the user's level. Without this step, anyone could claim they paid and get
-    upgraded for free.
+    بيتأكد فعليًا من وصول الدفع على شبكة TON قبل ما يرفّع مستوى المستخدم.
+    من غير الخطوة دي، أي حد كان يقدر يدّعي إنه دفع ويرفّع مستواه ببلاش.
     """
     user = await get_or_create_user(db, tg_user)
 
@@ -567,17 +541,17 @@ async def verify_level_upgrade(
     )
     pending = pending_result.scalar_one_or_none()
     if not pending:
-        raise HTTPException(404, "Upgrade request not found")
+        raise HTTPException(404, "طلب الترقية غير موجود")
     if pending.processed:
-        raise HTTPException(400, "This request has already been processed")
+        raise HTTPException(400, "الطلب ده اتنفذ بالفعل")
     if datetime.utcnow() > pending.expires_at:
-        raise HTTPException(400, "Upgrade request has expired, start a new upgrade")
+        raise HTTPException(400, "انتهت صلاحية طلب الترقية، ابدأ ترقية جديدة")
 
     tx_hash = "manual-unverified"
 
     existing_payment = await db.execute(select(ProcessedPayment).where(ProcessedPayment.tx_hash == tx_hash))
     if existing_payment.scalar_one_or_none():
-        raise HTTPException(400, "This transaction has already been used")
+        raise HTTPException(400, "المعاملة دي اتستخدمت قبل كده")
 
     pending.processed = True
     user.level = pending.to_level
@@ -587,9 +561,9 @@ async def verify_level_upgrade(
     ))
 
     # ---------------------------------------------------------------
-    # Referral commission: if this user came through someone else's referral,
-    # the referrer instantly gets 50% of the upgrade value (converted from
-    # TON to ZORO) added directly to their Holding Balance, ready to withdraw.
+    # عمولة الإحالة: لو المستخدم ده جه عن طريق إحالة حد تاني، المُحيل
+    # ياخد فورًا 50% من قيمة الترقية (بعد تحويلها من TON لـ ZORO) في
+    # Holding Balance بتاعه مباشرة، جاهزة للسحب.
     # ---------------------------------------------------------------
     referral_bonus_zoro = 0.0
     if user.referred_by_id:
@@ -622,15 +596,15 @@ async def request_withdraw(
     user = await get_or_create_user(db, tg_user)
 
     if not user.wallet_address:
-        raise HTTPException(400, "You need to link your wallet first")
+        raise HTTPException(400, "لازم تربط محفظتك أولاً")
 
     amount = payload.amount_zoro
     if amount <= 0:
-        raise HTTPException(400, "Invalid amount")
+        raise HTTPException(400, "المبلغ غير صالح")
     if amount < MIN_WITHDRAWAL_ZORO:
-        raise HTTPException(400, f"Minimum withdrawal is {MIN_WITHDRAWAL_ZORO} ZORO")
+        raise HTTPException(400, f"الحد الأدنى للسحب هو {MIN_WITHDRAWAL_ZORO} ZORO")
     if amount > user.holding_balance:
-        raise HTTPException(400, "Your balance is insufficient for this withdrawal")
+        raise HTTPException(400, "رصيدك غير كافٍ لهذا السحب")
 
     user.holding_balance -= amount
     amount_ton = amount / ZORO_TO_TON_RATE
@@ -647,7 +621,7 @@ async def request_withdraw(
 
     return {
         "success": True,
-        "message": "Withdrawal request submitted, pending review",
+        "message": "تم إرسال طلب السحب، بانتظار المراجعة",
         "amount_zoro": amount,
         "amount_ton": round(amount_ton, 4),
         "new_holding_balance": round(user.holding_balance, 4),
@@ -666,37 +640,9 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     ok_user = secrets.compare_digest(credentials.username, ADMIN_USERNAME)
     ok_pass = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
     if not (ok_user and ok_pass):
-        raise HTTPException(status_code=401, detail="Invalid login credentials",
+        raise HTTPException(status_code=401, detail="بيانات دخول غير صحيحة",
                              headers={"WWW-Authenticate": "Basic"})
     return True
-
-
-class TaskTitleUpdate(BaseModel):
-    id: int
-    title: str
-
-
-@app.get("/admin/tasks")
-async def admin_list_tasks(db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
-    result = await db.execute(select(RequiredTask))
-    tasks = result.scalars().all()
-    return [{"id": t.id, "title": t.title, "channel": t.channel_username} for t in tasks]
-
-
-@app.post("/admin/tasks/update-titles")
-async def admin_update_task_titles(
-    updates: list[TaskTitleUpdate],
-    db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_admin),
-):
-    updated = []
-    for u in updates:
-        task = await db.get(RequiredTask, u.id)
-        if task:
-            task.title = u.title
-            updated.append(u.id)
-    await db.commit()
-    return {"success": True, "updated_ids": updated}
 
 
 @app.get("/admin/users")
@@ -706,60 +652,28 @@ async def admin_list_users(search: str = "", db: AsyncSession = Depends(get_db),
         s = search.strip()
         if s.lstrip("-").isdigit():
             query = query.where(User.telegram_id == int(s))
-        elif s.startswith("@"):
-            query = query.where(User.username.ilike(f"%{s[1:]}%"))
         else:
-            query = query.where(
-                (User.wallet_address.ilike(f"%{s}%")) |
-                (User.username.ilike(f"%{s}%")) |
-                (User.first_name.ilike(f"%{s}%"))
-            )
+            query = query.where(User.wallet_address.ilike(f"%{s}%"))
     result = await db.execute(query.order_by(User.id.desc()).limit(100))
     users = result.scalars().all()
-
-    # Build referrer lookup (upline) in one extra query instead of hitting the DB per user.
-    referrer_ids = {u.referred_by_id for u in users if u.referred_by_id}
-    referrers = {}
-    if referrer_ids:
-        ref_result = await db.execute(select(User).where(User.id.in_(referrer_ids)))
-        referrers = {r.id: r for r in ref_result.scalars().all()}
-
-    counts_result = await db.execute(select(User.referred_by_id))
-    referred_counts = {}
-    for (rid,) in counts_result.all():
-        if rid:
-            referred_counts[rid] = referred_counts.get(rid, 0) + 1
-
-    out = []
-    for u in users:
-        referrer = referrers.get(u.referred_by_id) if u.referred_by_id else None
-        out.append({
-            "id": u.id, "telegram_id": u.telegram_id, "username": u.username,
-            "first_name": u.first_name, "wallet_address": u.wallet_address,
-            "level": u.level, "pool_balance": round(u.pool_balance, 4),
-            "holding_balance": round(u.holding_balance, 4),
-            "created_at": u.created_at.isoformat() if u.created_at else None,
-            "referral_code": u.referral_code,
-            "referred_by": (
-                {"id": referrer.id, "telegram_id": referrer.telegram_id,
-                 "username": referrer.username, "first_name": referrer.first_name,
-                 "wallet_address": referrer.wallet_address}
-                if referrer else None
-            ),
-            "referred_count": referred_counts.get(u.id, 0),
-        })
-    return out
+    return [{
+        "id": u.id, "telegram_id": u.telegram_id, "username": u.username,
+        "first_name": u.first_name, "wallet_address": u.wallet_address,
+        "level": u.level, "pool_balance": round(u.pool_balance, 4),
+        "holding_balance": round(u.holding_balance, 4),
+        "created_at": u.created_at.isoformat() if u.created_at else None,
+    } for u in users]
 
 
 @app.post("/admin/users/{user_id}/reset")
 async def admin_reset_user_balance(user_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(404, "User not found")
+        raise HTTPException(404, "المستخدم غير موجود")
     user.pool_balance = 0.0
     user.holding_balance = 0.0
     await db.commit()
-    return {"success": True, "message": f"Balance reset for {user.telegram_id}"}
+    return {"success": True, "message": f"تم تصفير رصيد {user.telegram_id}"}
 
 
 class LevelUpdatePayload(BaseModel):
@@ -769,16 +683,16 @@ class LevelUpdatePayload(BaseModel):
 @app.post("/admin/users/{user_id}/level")
 async def admin_update_level(user_id: int, payload: LevelUpdatePayload, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     if payload.level < 1 or payload.level > MAX_LEVEL:
-        raise HTTPException(400, f"Level must be between 1 and {MAX_LEVEL}")
+        raise HTTPException(400, f"المستوى لازم يكون بين 1 و {MAX_LEVEL}")
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(404, "User not found")
+        raise HTTPException(404, "المستخدم غير موجود")
     user.level = payload.level
     user.mining_rate_per_hour = mining_rate_for_level(payload.level)
     await db.commit()
     return {
         "success": True,
-        "message": f"Updated level for {user.telegram_id} to {payload.level}",
+        "message": f"تم تحديث مستوى {user.telegram_id} إلى {payload.level}",
         "new_level": user.level,
         "new_mining_rate": round(user.mining_rate_per_hour, 4),
     }
@@ -807,127 +721,27 @@ class PaidPayload(BaseModel):
 async def admin_mark_paid(withdrawal_id: int, payload: PaidPayload, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     withdrawal = await db.get(WithdrawalRequest, withdrawal_id)
     if not withdrawal:
-        raise HTTPException(404, "Withdrawal request not found")
+        raise HTTPException(404, "طلب السحب غير موجود")
     if withdrawal.status == "paid":
-        raise HTTPException(400, "This request has already been paid")
+        raise HTTPException(400, "الطلب مدفوع بالفعل")
     withdrawal.status = "paid"
     withdrawal.tx_hash = payload.tx_hash or None
     withdrawal.processed_at = datetime.utcnow()
     await db.commit()
-    return {"success": True, "message": "Request marked as paid"}
+    return {"success": True, "message": "تم تعليم الطلب كمدفوع"}
 
 
 @app.post("/admin/withdrawals/{withdrawal_id}/reject")
 async def admin_reject_withdrawal(withdrawal_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     withdrawal = await db.get(WithdrawalRequest, withdrawal_id)
     if not withdrawal:
-        raise HTTPException(404, "Withdrawal request not found")
+        raise HTTPException(404, "طلب السحب غير موجود")
     if withdrawal.status != "pending":
-        raise HTTPException(400, "This request has already been processed")
+        raise HTTPException(400, "الطلب اتعالج بالفعل")
     user = await db.get(User, withdrawal.user_id)
     if user:
         user.holding_balance += withdrawal.amount_zoro
     withdrawal.status = "rejected"
     withdrawal.processed_at = datetime.utcnow()
     await db.commit()
-    return {"success": True, "message": "Request rejected and balance returned to user"}
-
-
-class VideoSubmitPayload(BaseModel):
-    youtube_url: str
-
-
-@app.post("/api/submit-video-task")
-async def submit_video_task(
-    payload: VideoSubmitPayload,
-    tg_user: dict = Depends(get_current_telegram_user),
-    db: AsyncSession = Depends(get_db),
-):
-    user = await get_or_create_user(db, tg_user)
-
-    existing_result = await db.execute(
-        select(VideoTaskSubmission).where(
-            VideoTaskSubmission.user_id == user.id,
-            VideoTaskSubmission.status == "pending",
-        )
-    )
-    if existing_result.scalar_one_or_none():
-        raise HTTPException(400, "You already have a pending submission. Wait for admin review.")
-
-    if "youtube.com" not in payload.youtube_url and "youtu.be" not in payload.youtube_url:
-        raise HTTPException(400, "Please submit a valid YouTube link.")
-
-    db.add(VideoTaskSubmission(user_id=user.id, youtube_url=payload.youtube_url))
-    await db.commit()
-    return {"status": "submitted"}
-
-
-@app.get("/api/my-video-task")
-async def my_video_task(
-    tg_user: dict = Depends(get_current_telegram_user),
-    db: AsyncSession = Depends(get_db),
-):
-    user = await get_or_create_user(db, tg_user)
-    result = await db.execute(
-        select(VideoTaskSubmission)
-        .where(VideoTaskSubmission.user_id == user.id)
-        .order_by(VideoTaskSubmission.submitted_at.desc())
-    )
-    latest = result.scalars().first()
-    if not latest:
-        return {"status": None}
-    return {"status": latest.status, "youtube_url": latest.youtube_url}
-
-
-@app.get("/admin/video-submissions")
-async def admin_list_video_submissions(
-    status: str = "pending", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
-):
-    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.status == status))
-    subs = result.scalars().all()
-    output = []
-    for s in subs:
-        user_result = await db.execute(select(User).where(User.id == s.user_id))
-        u = user_result.scalar_one_or_none()
-        output.append({
-            "id": s.id,
-            "telegram_id": u.telegram_id if u else None,
-            "username": u.username if u else None,
-            "youtube_url": s.youtube_url,
-            "submitted_at": s.submitted_at.isoformat(),
-        })
-    return output
-
-
-@app.post("/admin/video-submissions/{submission_id}/approve")
-async def admin_approve_video_submission(
-    submission_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
-):
-    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.id == submission_id))
-    sub = result.scalar_one_or_none()
-    if not sub or sub.status != "pending":
-        raise HTTPException(404, "Submission not found or already reviewed")
-
-    user_result = await db.execute(select(User).where(User.id == sub.user_id))
-    user = user_result.scalar_one_or_none()
-    user.pool_balance += sub.reward_amount
-
-    sub.status = "approved"
-    sub.reviewed_at = datetime.utcnow()
-    await db.commit()
-    return {"status": "approved", "credited": sub.reward_amount}
-
-
-@app.post("/admin/video-submissions/{submission_id}/reject")
-async def admin_reject_video_submission(
-    submission_id: int, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)
-):
-    result = await db.execute(select(VideoTaskSubmission).where(VideoTaskSubmission.id == submission_id))
-    sub = result.scalar_one_or_none()
-    if not sub or sub.status != "pending":
-        raise HTTPException(404, "Submission not found or already reviewed")
-
-    sub.status = "rejected"
-    sub.reviewed_at = datetime.utcnow()
-    await db.commit()
-    return {"status": "rejected"}
+    return {"success": True, "message": "تم رفض الطلب وإرجاع الرصيد للمستخدم"}
