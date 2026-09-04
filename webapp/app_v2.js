@@ -557,3 +557,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+
+document.getElementById("transferToHoldingBtn")?.addEventListener("click", async () => {
+  const btn = document.getElementById("transferToHoldingBtn");
+  const status = document.getElementById("transferStatus");
+  btn.disabled = true;
+  try {
+    const result = await apiPost("/api/transfer-to-holding", {});
+    status.textContent = `تم تحويل ${result.transferred} ZORO إلى Holding ✅`;
+    tg.HapticFeedback?.notificationOccurred("success");
+    await refreshState();
+  } catch (e) {
+    status.textContent = "خطأ: " + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
