@@ -97,12 +97,13 @@ function showError(msg) {
 }
 
 // ---------- Navigation ----------
-const pages = ["mine", "tasks", "miner", "friends", "profile"];
+const pages = ["mine", "tasks", "miner", "friends", "profile", "video"];
 document.querySelectorAll(".nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     pages.forEach((p) => document.getElementById(`page-${p}`).classList.add("hidden"));
     document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
     document.getElementById(`page-${btn.dataset.page}`).classList.remove("hidden");
+    if (btn.dataset.page === "video") loadSpecialTask();
     btn.classList.add("active");
   });
 });
@@ -598,3 +599,56 @@ document.getElementById("transferToHoldingBtn")?.addEventListener("click", async
     btn.disabled = false;
   }
 });
+
+// ---------- مهمة خاصة: إرسال فيديو ----------
+async function loadSpecialTask() {
+  const actionEl = document.getElementById("specialTaskAction");
+  if (!actionEl) return;
+  try {
+    const res = await apiGet("/api/my-video-task");
+    renderSpecialTask(res.status, res.youtube_url);
+  } catch (e) {
+    renderSpecialTask(null);
+  }
+}
+
+function renderSpecialTask(status, youtubeUrl) {
+  const actionEl = document.getElementById("specialTaskAction");
+  if (!actionEl) return;
+
+  if (status === "pending") {
+    actionEl.innerHTML = `<span class="task-cooldown">⏳ قيد المراجعة</span>`;
+  } else if (status === "approved") {
+    actionEl.innerHTML = `<span class="task-cooldown">✅ تمت الموافقة</span>`;
+  } else if (status === "rejected") {
+    actionEl.innerHTML = `
+      <input type="text" id="specialTaskInput" placeholder="رابط اليوتيوب" style="width:100%;margin-bottom:6px;">
+      <button id="specialTaskSubmitBtn">إعادة الإرسال</button>`;
+    bindSpecialTaskSubmit();
+  } else {
+    actionEl.innerHTML = `
+      <input type="text" id="specialTaskInput" placeholder="رابط اليوتيوب" style="width:100%;margin-bottom:6px;">
+      <button id="specialTaskSubmitBtn">إرسال</button>`;
+    bindSpecialTaskSubmit();
+  }
+}
+
+function bindSpecialTaskSubmit() {
+  const btn = document.getElementById("specialTaskSubmitBtn");
+  if (!btn) return;
+  btn.onclick = async () => {
+    const input = document.getElementById("specialTaskInput");
+    const url = input.value.trim();
+    if (!url) return;
+    btn.disabled = true;
+    btn.textContent = "جاري الإرسال...";
+    try {
+      await apiPost("/api/submit-video-task", { youtube_url: url });
+      renderSpecialTask("pending");
+    } catch (e) {
+      showError(e.message || "فشل الإرسال");
+      btn.disabled = false;
+      btn.textContent = "إرسال";
+    }
+  };
+}
