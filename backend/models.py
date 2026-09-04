@@ -67,6 +67,19 @@ class UserTaskCompletion(Base):
     user: Mapped["User"] = relationship(back_populates="task_completions", foreign_keys=[user_id])
 
 
+class VideoTaskSubmission(Base):
+    """طلب مهمة الفيديو الإشهاري الخاصة - لازم موافقة الأدمن يدويًا."""
+    __tablename__ = "video_task_submissions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    youtube_url: Mapped[str] = mapped_column(String(500))
+    reward_amount: Mapped[float] = mapped_column(Float, default=500.0)
+    status: Mapped[str] = mapped_column(String(50), default="pending")  # pending / approved / rejected
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+
+
 class DistributionBatch(Base):
     """
     دفعة توزيع واحدة (run) - بتتربط بالـ CSV اللي اتراجع وقت الـ dry-run.
