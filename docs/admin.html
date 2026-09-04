@@ -364,6 +364,7 @@
   <nav>
     <button class="tab active" data-view="usersView">المستخدمين</button>
     <button class="tab" data-view="withdrawalsView">طلبات السحب</button>
+    <button class="tab" data-view="videoTasksView">طلبات الفيديو</button>
   </nav>
 
   <!-- ---- Users tab ---- -->
@@ -384,6 +385,11 @@
       <button class="chip" data-status="all">الكل</button>
     </div>
     <div id="withdrawalsList"></div>
+  </section>
+
+  <!-- ---- Video Tasks tab ---- -->
+  <section class="view" id="videoTasksView">
+    <div id="videoTasksList"></div>
   </section>
 </div>
 
@@ -475,6 +481,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.add("active");
     document.getElementById(tab.dataset.view).classList.add("active");
     if (tab.dataset.view === "withdrawalsView") loadWithdrawals();
+    if (tab.dataset.view === "videoTasksView") loadVideoTasks();
   });
 });
 
@@ -705,6 +712,66 @@ async function rejectWithdrawal(id) {
     const res = await apiCall(`/admin/withdrawals/${id}/reject`, { method: "POST" });
     showToast(res.message || "تم الرفض وإرجاع الرصيد", "success");
     loadWithdrawals();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
+// ---------- Video Tasks ----------
+async function loadVideoTasks() {
+  const list = document.getElementById("videoTasksList");
+  list.innerHTML = '<div class="loading">جارِ التحميل...</div>';
+  try {
+    const items = await apiCall(`/admin/video-submissions?status=pending`);
+    renderVideoTasks(items);
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state">تعذر تحميل الطلبات</div>`;
+  }
+}
+
+function renderVideoTasks(items) {
+  const list = document.getElementById("videoTasksList");
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state">لا توجد طلبات فيديو قيد الانتظار</div>';
+    return;
+  }
+  list.innerHTML = items.map(v => `
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <div class="card-name">${escapeHtml(v.username || v.telegram_id)}</div>
+          <div class="card-id">ID: ${v.telegram_id}</div>
+        </div>
+        <span class="badge badge-pending">قيد الانتظار</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-label">رابط الفيديو</span>
+        <span class="kv-value wallet-value"><a href="${v.youtube_url}" target="_blank" style="color:inherit;">${v.youtube_url}</a></span>
+      </div>
+      <div class="actions">
+        <button class="btn-paid" onclick="approveVideoTask(${v.id})">موافقة (+500 ZORO)</button>
+        <button class="btn-reject" onclick="rejectVideoTask(${v.id})">رفض</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function approveVideoTask(id) {
+  try {
+    const res = await apiCall(`/admin/video-submissions/${id}/approve`, { method: "POST" });
+    showToast(`تم الاعتماد، تم إضافة ${res.credited} ZORO`, "success");
+    loadVideoTasks();
+  } catch (e) {
+    showToast(e.message, "error");
+  }
+}
+
+async function rejectVideoTask(id) {
+  if (!confirm("متأكد إنك عايز ترفض طلب الفيديو ده؟")) return;
+  try {
+    const res = await apiCall(`/admin/video-submissions/${id}/reject`, { method: "POST" });
+    showToast("تم الرفض", "success");
+    loadVideoTasks();
   } catch (e) {
     showToast(e.message, "error");
   }
