@@ -609,6 +609,20 @@ async def verify_level_upgrade(
     }
 
 
+ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID", "7790518329")
+
+
+async def notify_admin(text: str):
+    if not BOT_TOKEN or not ADMIN_TELEGRAM_ID:
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(url, json={"chat_id": ADMIN_TELEGRAM_ID, "text": text})
+    except Exception:
+        pass
+
+
 class WithdrawPayload(BaseModel):
     amount_zoro: float
 
@@ -644,6 +658,14 @@ async def request_withdraw(
     )
     db.add(withdrawal)
     await db.commit()
+
+    admin_msg = (
+        f"طلب سحب جديد!\n"
+        f"المستخدم: {tg_user.get('username') or tg_user.get('id')}\n"
+        f"الكمية: {amount} ZORO ({amount_ton:.4f} TON)\n"
+        f"العنوان: {user.wallet_address}"
+    )
+    await notify_admin(admin_msg)
 
     return {
         "success": True,
@@ -781,6 +803,35 @@ async def admin_update_level(user_id: int, payload: LevelUpdatePayload, db: Asyn
         "message": f"Updated level for {user.telegram_id} to {payload.level}",
         "new_level": user.level,
         "new_mining_rate": round(user.mining_rate_per_hour, 4),
+    }
+
+
+@app.get("/api/my-withdrawals")
+async def my_withdrawals(
+    tg_user: dict = Depends(get_current_telegram_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await get_or_create_user(db, tg_user)
+    result = await db.execute(
+        select(WithdrawalRequest)
+        .where(WithdrawalRequest.user_id == user.id)
+        .order_by(WithdrawalRequest.created_at.desc())
+        .limit(50)
+    )
+    items = result.scalars().all()
+    return {
+        "count": len(items),
+        "withdrawals": [
+            {
+                "amount_zoro": w.amount_zoro,
+                "amount_ton": w.amount_ton,
+                "status": w.status,
+                "tx_hash": w.tx_hash,
+                "created_at": w.created_at.isoformat() if w.created_at else None,
+                "processed_at": w.processed_at.isoformat() if w.processed_at else None,
+            }
+            for w in items
+        ],
     }
 
 

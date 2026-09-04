@@ -65,6 +65,30 @@ async function apiGet(path) {
   return res.json();
 }
 
+async function loadWithdrawHistory() {
+  const el = document.getElementById("withdrawHistoryList");
+  if (!el) return;
+  try {
+    const data = await apiGet("/api/my-withdrawals");
+    if (!data.withdrawals || data.withdrawals.length === 0) {
+      el.innerHTML = '<p class="hint">لسه مفيش عمليات سحب</p>';
+      return;
+    }
+    const statusLabel = { pending: "قيد المراجعة", paid: "تم الدفع", rejected: "مرفوض" };
+    el.innerHTML = '<h4 class="section-title" style="font-size:15px;">سجل السحوبات</h4>' +
+      data.withdrawals.map((w) => {
+        const date = w.created_at ? new Date(w.created_at).toLocaleString("ar-EG") : "-";
+        const txLine = w.tx_hash ? `<br>رقم المعاملة: ${w.tx_hash}` : "";
+        return `<div class="stat-line" style="border-bottom:1px solid rgba(255,255,255,0.08);padding:8px 0;font-size:13px;">
+          <b>${w.amount_zoro} ZORO</b> (${w.amount_ton} TON) - ${statusLabel[w.status] || w.status}<br>
+          الطلب: ${date}${txLine}
+        </div>`;
+      }).join("");
+  } catch (e) {
+    el.innerHTML = "";
+  }
+}
+
 function showError(msg) {
   const el = document.getElementById("errorMsg");
   el.textContent = msg;
