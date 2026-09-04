@@ -273,7 +273,6 @@ document.getElementById("mainActionBtn").addEventListener("click", async () => {
       playCoinSound();
       const result = await apiPost("/api/mine/claim", {});
       tg.HapticFeedback?.notificationOccurred("success");
-      
     }
     await refreshState();
   } catch (e) {
@@ -291,6 +290,7 @@ document.getElementById("copyRefBtn").addEventListener("click", () => {
 let allLevels = [];
 let levelsListLoaded = false;
 let pendingUpgradeNonce = null;
+let selectedTargetLevel = null;
 
 async function fetchLevelsList() {
   const data = await apiGet("/api/levels");
@@ -302,18 +302,52 @@ async function fetchLevelsList() {
 function renderLevelsList(currentLevel) {
   const container = document.getElementById("levelsList");
   container.innerHTML = "";
+
+  // مجموع تراكمي للسعر من المستوى الحالي لأي مستوى أعلى
+  let cumulative = 0;
+  const jumpPrices = {};
+  allLevels.forEach((lvl) => {
+    if (lvl.level > currentLevel && lvl.upgrade_price_ton != null) {
+      cumulative += lvl.upgrade_price_ton;
+      jumpPrices[lvl.level] = cumulative;
+    }
+  });
+
   allLevels.forEach((lvl) => {
     const row = document.createElement("div");
-    row.className = "level-row" + (lvl.unlocked ? " unlocked" : "") + (lvl.level === currentLevel ? " current" : "");
-    const priceLabel = lvl.upgrade_price_ton != null ? `${lvl.upgrade_price_ton} TON` : "—";
+    const isSelected = lvl.level === selectedTargetLevel;
+    row.className = "level-row"
+      + (lvl.unlocked ? " unlocked" : "")
+      + (lvl.level === currentLevel ? " current" : "")
+      + (isSelected ? " selected" : "");
+    const jumpPrice = jumpPrices[lvl.level];
+    const priceLabel = jumpPrice != null ? `${jumpPrice.toFixed(4)} TON` : "—";
     row.innerHTML = `
       <span class="level-num">Lvl ${lvl.level}</span>
       <span class="level-rate">${lvl.mining_rate_per_hour} ZORO/س</span>
       <span class="level-price">${lvl.unlocked ? "" : priceLabel}</span>
-      <span class="level-check">${lvl.unlocked ? "✅" : ""}</span>
+      <span class="level-check">${lvl.unlocked ? "✅" : (isSelected ? "☑️" : "")}</span>
     `;
+    if (!lvl.unlocked) {
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => {
+        selectedTargetLevel = lvl.level;
+        renderLevelsList(currentLevel);
+        updateUpgradeButtonLabel(jumpPrices[lvl.level]);
+      });
+    }
     container.appendChild(row);
   });
+}
+
+function updateUpgradeButtonLabel(price) {
+  const btn = document.getElementById("minerUpgradeBtn");
+  if (!btn) return;
+  if (selectedTargetLevel != null && price != null) {
+    btn.textContent = `ترقية للمستوى ${selectedTargetLevel} (${price.toFixed(4)} TON)`;
+  } else {
+    btn.textContent = "اختر مستوى للترقية";
+  }
 }
 
 // بيبني الـ payload (تعليق المعاملة) كـ base64 BOC، لازم يتحط بالظبط في المعاملة
@@ -342,6 +376,12 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
   const btn = document.getElementById("minerUpgradeBtn");
   const statusEl = document.getElementById("minerUpgradeStatus");
   statusEl.classList.remove("hidden");
+
+  if (!selectedTargetLevel) {
+    statusEl.textContent = "اختار المستوى اللي عايز تترقى له الأول من القائمة";
+    return;
+  }
+
   btn.disabled = true;
 
   try {
@@ -350,7 +390,7 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
 
     if (!nonce) {
       statusEl.textContent = "جاري تجهيز طلب الترقية...";
-      const req = await apiPost("/api/levels/upgrade/start", {});
+      const req = await apiPost("/api/levels/upgrade/start", { target_level: selectedTargetLevel });
       treasury = req.treasury_address;
       amountNanoton = req.amount_nanoton;
       comment = req.comment;
@@ -373,6 +413,7 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
     const result = await apiPost("/api/levels/upgrade/verify", { nonce });
 
     pendingUpgradeNonce = null;
+    selectedTargetLevel = null;
     statusEl.textContent = `🎉 اتّرقيت للمستوى ${result.new_level}!`;
     tg.HapticFeedback?.notificationOccurred("success");
     await refreshState();

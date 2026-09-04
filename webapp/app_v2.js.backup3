@@ -270,9 +270,9 @@ document.getElementById("mainActionBtn").addEventListener("click", async () => {
     if (!currentState.is_mining) {
       await apiPost("/api/mine/start", {});
     } else {
+      playCoinSound();
       const result = await apiPost("/api/mine/claim", {});
       tg.HapticFeedback?.notificationOccurred("success");
-      playCoinSound();
     }
     await refreshState();
   } catch (e) {

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Zoro Airdrop</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@3.0.2/dist/tonconnect-ui.min.js" crossorigin="anonymous"></script>
+<!-- بنستخدمها بس عشان نبني الـ comment payload (تعليق المعاملة) لمعاملات الدفع -->
+<script src="https://unpkg.com/tonweb@0.0.62/dist/tonweb.js"></script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ===== شريط علوي: المستخدم + زرار المحفظة ===== -->
+    <header class="topbar">
+      <div class="userbox">
+        <div class="avatar" id="avatarInitial">?</div>
+        <div>
+          <div class="username" id="usernameLabel">...</div>
+          <div class="levelPill">Lvl <span id="levelValue">1</span></div>
+        </div>
+      </div>
+      <div id="ton-connect-btn"></div>
+    </header>
+
+    <!-- ===== صفحة Mine ===== -->
+    <section id="page-mine" class="page">
+      <div class="assets-card">
+        <p class="assets-label">ASSETS</p>
+        <h2><span id="poolBalance">0.0000</span> ZORO</h2>
+        <div class="wallets-row">
+          <div class="wallet-box">
+            <span class="wallet-label">HOLDING WALLET</span>
+            <span class="wallet-value" id="holdingBalance">0 ZORO</span>
+          </div>
+          <div class="wallet-box">
+            <span class="wallet-label">POOL WALLET</span>
+            <span class="wallet-value" id="poolBalance2">0.0000 ZORO</span>
+          </div>
+        </div>
+      </div>
+      <p class="hint center" id="minWithdrawalHint"></p>
+
+      <div class="coin-wrap">
+        <div class="pending-badge" id="pendingBadge">+0.0000</div>
+        <div class="coin-glow"></div>
+        <div class="coin" id="coinVisual"></div>
+      </div>
+
+      <button id="mainActionBtn" class="main-action-btn">START</button>
+      <p class="hint center" id="mineHint"></p>
+    </section>
+
+    <!-- ===== صفحة Tasks ===== -->
+    <section id="page-tasks" class="page hidden">
+      <h3 class="section-title">المهام</h3>
+      <div id="tasksList"></div>
+    </section>
+
+    <!-- ===== صفحة Miner (المستويات) ===== -->
+    <section id="page-miner" class="page hidden">
+      <h3 class="section-title">المستويات</h3>
+      <div class="card miner-summary">
+        <p class="stat-line">مستواك الحالي: <b id="minerCurrentLevel">1</b> / <span id="minerMaxLevel">100</span></p>
+        <p class="stat-line">معدل التعدين الحالي: <b id="minerCurrentRate">10</b> ZORO/ساعة</p>
+        <div id="minerNextBox" class="miner-next-box">
+          <p class="hint">الترقية للمستوى <span id="minerNextLevel">2</span> بتديك <b id="minerNextRate">15</b> ZORO/ساعة</p>
+          <button id="minerUpgradeBtn" class="main-action-btn">ترقية بـ <span id="minerNextPrice">1.0</span> TON</button>
+          <p id="minerUpgradeStatus" class="hint center hidden"></p>
+        </div>
+        <p id="minerMaxedMsg" class="hint center hidden">وصلت لأعلى مستوى 🎉</p>
+      </div>
+      <div id="levelsList" class="levels-list"></div>
+    </section>
+
+    <!-- ===== صفحة Friends ===== -->
+    <section id="page-friends" class="page hidden">
+      <h3 class="section-title">دعوة الأصدقاء</h3>
+      <div class="card">
+        <p class="hint">اكسب <span id="refBonusLabel">25</span> ZORO عن كل صديق ينضم برابطك</p>
+        <div class="ref-link-box">
+          <span id="refLinkText">...</span>
+        </div>
+        <button id="copyRefBtn">نسخ رابط الدعوة</button>
+        <p class="stat-line">عدد الأصدقاء المنضمين: <b id="refCount">0</b></p>
+      </div>
+      <div class="card" id="referralsListCard">
+        <h4 class="section-title" style="font-size:16px;">إحالاتي</h4>
+        <div id="referralsList"><p class="hint">لسه مفيش أصدقاء منضمين</p></div>
+      </div>
+    </section>
+
+    <!-- ===== صفحة Profile ===== -->
+    <section id="page-profile" class="page hidden">
+      <h3 class="section-title">الملف الشخصي</h3>
+      <div class="card">
+        <p class="stat-line">اسم المستخدم: <b id="profileUsername">-</b></p>
+        <p class="stat-line">محفظتك: <b id="profileWallet">غير مربوطة</b></p>
+        <button id="manualDisconnectBtn" class="btn hidden" style="background:#c0392b;color:#fff;margin:8px 0;">قطع الاتصال بالمحفظة</button>
+        <p class="stat-line">رصيد Pool: <b id="profilePool">0</b></p>
+        <p class="stat-line">رصيد Holding: <b id="profileHolding">0</b></p>
+        <p class="stat-line">الحد الأدنى للسحب: <b id="profileMinWithdrawal">-</b></p>
+        <p class="hint" id="profileExchangeRate"></p>
+        <div class="stat-line sound-toggle-row">
+          <span>صوت النقود 🔊</span>
+          <label class="switch">
+            <input type="checkbox" id="soundToggle" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="card withdraw-card">
+        <h3 class="section-title">💸 سحب الرصيد</h3>
+        <input type="number" id="withdrawAmount" placeholder="كمية ZORO للسحب" step="0.01" />
+        <button id="withdrawBtn" class="btn withdraw-btn-big">💸 سحب الآن</button>
+        <p class="hint" id="withdrawStatus"></p>
+      </div>
+    </section>
+
+    <p id="loadingMsg" class="loading">جاري التحميل...</p>
+    <p id="errorMsg" class="error hidden"></p>
+
+    <!-- ===== شاشة الاشتراك الإجباري ===== -->
+    <section id="page-gate" class="page hidden">
+      <h3 class="section-title">اشترك في قناة واحدة على الأقل من هذه القنوات</h3>
+      <div id="gateChannelsList" class="card"></div>
+      <button id="gateRecheckBtn" class="main-action-btn">تحقق ودخول</button>
+      <p id="gateStatus" class="hint center hidden"></p>
+    </section>
+
+    <!-- ===== تابات سفلية ===== -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-page="mine">⛏️<span>Mine</span></button>
+      <button class="nav-btn" data-page="tasks">📋<span>Tasks</span></button>
+      <button class="nav-btn" data-page="miner">🚀<span>Miner</span></button>
+      <button class="nav-btn" data-page="friends">👥<span>Friends</span></button>
+      <button class="nav-btn" data-page="profile">👤<span>Profile</span></button>
+    </nav>
+
+  </div>
+  <script src="app_v2.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script><script>eruda.init();</script></body>
+</html>
