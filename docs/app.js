@@ -238,7 +238,7 @@ document.getElementById("withdrawBtn")?.addEventListener("click", async () => {
   btn.textContent = "جاري الإرسال...";
   try {
     await apiPost("/api/withdraw", { amount_zoro: amount });
-    showSuccess("✅ تم إرسال طلب السحب بنجاح، هيتراجع من الأدمن قريبًا");
+    showSuccess("✅ تم بنجاح! طلبك الآن قيد الانتظار للتحقق من الأدمن");
     input.value = "";
     await refreshState();
   } catch (e) {
