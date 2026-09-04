@@ -629,10 +629,10 @@ async def request_withdraw(
         raise HTTPException(400, "Invalid amount")
     if amount < MIN_WITHDRAWAL_ZORO:
         raise HTTPException(400, f"Minimum withdrawal is {MIN_WITHDRAWAL_ZORO} ZORO")
-    if amount > user.holding_balance:
+    if amount > user.pool_balance:
         raise HTTPException(400, "Your balance is insufficient for this withdrawal")
 
-    user.holding_balance -= amount
+    user.pool_balance -= amount
     amount_ton = amount / ZORO_TO_TON_RATE
 
     withdrawal = WithdrawalRequest(
@@ -826,7 +826,7 @@ async def admin_reject_withdrawal(withdrawal_id: int, db: AsyncSession = Depends
         raise HTTPException(400, "This request has already been processed")
     user = await db.get(User, withdrawal.user_id)
     if user:
-        user.holding_balance += withdrawal.amount_zoro
+        user.pool_balance += withdrawal.amount_zoro
     withdrawal.status = "rejected"
     withdrawal.processed_at = datetime.utcnow()
     await db.commit()
