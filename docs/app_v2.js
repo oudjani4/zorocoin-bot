@@ -97,7 +97,7 @@ function showError(msg) {
 }
 
 // ---------- Navigation ----------
-const pages = ["mine", "tasks", "miner", "friends", "profile", "video"];
+const pages = ["mine", "tasks", "miner", "friends", "profile"];
 document.querySelectorAll(".nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     pages.forEach((p) => document.getElementById(`page-${p}`).classList.add("hidden"));
