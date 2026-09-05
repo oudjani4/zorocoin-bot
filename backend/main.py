@@ -147,6 +147,15 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
         db.add(user)
         await db.commit()
         await db.refresh(user)
+
+    if not user.referral_code:
+        code = gen_referral_code()
+        while (await db.execute(select(User).where(User.referral_code == code))).scalar_one_or_none():
+            code = gen_referral_code()
+        user.referral_code = code
+        await db.commit()
+        await db.refresh(user)
+
     return user
 
 
