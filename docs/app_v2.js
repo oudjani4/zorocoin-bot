@@ -215,6 +215,7 @@ function render(data) {
   renderTaskButtons();
   clearInterval(taskCooldownTimer);
   taskCooldownTimer = setInterval(renderTaskButtons, 1000);
+  loadSpecialTask();
 
   // ---- Miner (المستويات) ----
   document.getElementById("minerCurrentLevel").textContent = data.level;
