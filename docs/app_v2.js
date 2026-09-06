@@ -34,6 +34,23 @@ tonConnectUI.onStatusChange(async (wallet) => {
 });
 
 // ---------- Helpers ----------
+async function wakeUpServer(statusEl) {
+  const maxAttempts = 6;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      await fetch(API_BASE + "/", { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return true;
+    } catch (e) {
+      if (statusEl) statusEl.textContent = "جاري الاتصال بالسيرفر... حاول الانتظار قليلاً";
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+  return false;
+}
+
 async function apiPost(path, body) {
   const res = await fetch(API_BASE + path, {
     method: "POST",
@@ -371,6 +388,9 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
   btn.disabled = true;
 
   try {
+    statusEl.textContent = "جاري التحقق من الاتصال بالسيرفر...";
+    await wakeUpServer(statusEl);
+
     let nonce = pendingUpgradeNonce;
     let treasury, amountNanoton, comment;
 
