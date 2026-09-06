@@ -159,6 +159,18 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
     return user
 
 
+async def get_user_for_update(db: AsyncSession, user_id: int) -> User:
+    """
+    Re-fetches the user with a row-level lock (SELECT ... FOR UPDATE).
+    Must be called right before reading/modifying balance-affecting fields
+    in the SAME request, so a concurrent duplicate request blocks until
+    this transaction commits instead of reading stale values (prevents
+    double-claim / double-spend race conditions from rapid duplicate calls).
+    """
+    result = await db.execute(select(User).where(User.id == user_id).with_for_update())
+    return result.scalar_one()
+
+
 def calc_pending_mined(user: User) -> float:
     if not user.mining_started_at:
         return 0.0
@@ -309,6 +321,7 @@ async def claim_task(
     after the cooldown period (cooldown_hours).
     """
     user = await get_or_create_user(db, tg_user)
+    user = await get_user_for_update(db, user.id)
 
     task_result = await db.execute(select(RequiredTask).where(RequiredTask.id == task_id))
     task = task_result.scalar_one_or_none()
@@ -344,6 +357,7 @@ async def mine_start(
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_or_create_user(db, tg_user)
+    user = await get_user_for_update(db, user.id)
 
     if not user.wallet_address:
         raise HTTPException(400, "You need to link your wallet first")
@@ -362,6 +376,7 @@ async def mine_claim(
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_or_create_user(db, tg_user)
+    user = await get_user_for_update(db, user.id)
 
     if user.mining_started_at is None:
         raise HTTPException(400, "No active mining session")
@@ -379,6 +394,7 @@ async def transfer_to_holding(
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_or_create_user(db, tg_user)
+    user = await get_user_for_update(db, user.id)
 
     amount = user.pool_balance
     if amount <= 0:
