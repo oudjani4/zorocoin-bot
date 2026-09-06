@@ -165,7 +165,7 @@ function render(data) {
   document.getElementById("profileExchangeRate").textContent =
     `سعر الصرف عند التوزيع: ${data.zoro_to_ton_rate} ZORO = 1 TON`;
 
-  const remaining = Math.max(0, data.min_withdrawal_zoro - data.pool_balance);
+  const remaining = Math.max(0, data.min_withdrawal_zoro - data.holding_balance);
   document.getElementById("minWithdrawalHint").textContent =
     remaining > 0
       ? `محتاج ${remaining.toFixed(2)} ZORO كمان عشان توصل للحد الأدنى للسحب (${data.min_withdrawal_zoro})`
@@ -673,3 +673,32 @@ function bindSpecialTaskSubmit() {
     }
   };
 }
+
+
+// ---------- Withdraw ----------
+document.getElementById("withdrawBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("withdrawBtn");
+  const input = document.getElementById("withdrawAmount");
+  const statusEl = document.getElementById("withdrawStatus");
+
+  const amount = parseFloat(input.value);
+  if (!amount || amount <= 0) {
+    statusEl.textContent = "دخّل قيمة صحيحة";
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = "جاري إرسال طلب السحب...";
+
+  try {
+    const result = await apiPost("/api/withdraw", { amount_zoro: amount });
+    statusEl.textContent = "✅ " + (result.message || "تم إرسال طلب السحب، بانتظار المراجعة");
+    input.value = "";
+    await refreshState();
+    await loadWithdrawHistory();
+  } catch (e) {
+    statusEl.textContent = e.message || "فشل إرسال طلب السحب";
+  } finally {
+    btn.disabled = false;
+  }
+});
