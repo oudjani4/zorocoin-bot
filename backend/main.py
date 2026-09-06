@@ -315,12 +315,6 @@ async def claim_task(
     if not task or not task.is_active:
         raise HTTPException(404, "Task not found")
 
-    if not await is_channel_member(task.channel_username, user.telegram_id):
-        raise HTTPException(
-            403,
-            f"You haven't joined {task.channel_username} yet. Join first, then try again.",
-        )
-
     existing_result = await db.execute(
         select(UserTaskCompletion).where(
             UserTaskCompletion.user_id == user.id, UserTaskCompletion.task_id == task_id

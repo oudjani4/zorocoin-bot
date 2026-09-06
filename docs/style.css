@@ -435,3 +435,5 @@ body {
   border: none;
   border-radius: 10px;
 }
+
+.verify-mode { background: linear-gradient(135deg, #55efc4, #2e9e7f) !important; color: #fff !important; }
