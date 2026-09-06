@@ -576,7 +576,20 @@ async def verify_level_upgrade(
     if datetime.utcnow() > pending.expires_at:
         raise HTTPException(400, "Upgrade request has expired, start a new upgrade")
 
-    tx_hash = f"manual-unverified-{nonce}"
+    if not user.wallet_address:
+        raise HTTPException(400, "No wallet connected for this user")
+
+    min_amount_nanoton = int(pending.price_ton * 1_000_000_000)
+    after_ts = int(pending.created_at.timestamp())
+
+    tx_hash = await find_matching_transaction(
+        sender_address=user.wallet_address,
+        min_amount_nanoton=min_amount_nanoton,
+        after_ts=after_ts,
+    )
+
+    if not tx_hash:
+        raise HTTPException(400, "Payment not found yet on-chain. Wait a bit and try again.")
 
     existing_payment = await db.execute(select(ProcessedPayment).where(ProcessedPayment.tx_hash == tx_hash))
     if existing_payment.scalar_one_or_none():
