@@ -23,6 +23,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 REQUIRED_CHANNELS_ENV = [c.strip() for c in os.getenv("REQUIRED_CHANNELS", "").split(",") if c.strip()]
 REFERRAL_BONUS = float(os.getenv("REFERRAL_BONUS", 25))
+REFERRAL_MINING_SHARE = float(os.getenv("REFERRAL_MINING_SHARE", 0.10))
 DEFAULT_MINING_RATE = float(os.getenv("MINING_RATE_PER_HOUR", 10))
 MAX_SESSION_HOURS = float(os.getenv("MAX_SESSION_HOURS", 3))
 
@@ -133,7 +134,9 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
             referrer = ref_result.scalar_one_or_none()
             if referrer:
                 referred_by_id = referrer.id
-                referrer.pool_balance += REFERRAL_BONUS
+                # No instant bonus anymore: referrer only earns a % of what
+                # the referred user actually mines (see mine_claim), which
+                # removes the incentive to create fake accounts at signup.
 
         user = User(
             telegram_id=tg_user["id"],
@@ -384,6 +387,11 @@ async def mine_claim(
     mined = calc_pending_mined(user)
     user.pool_balance += mined
     user.mining_started_at = None
+
+    if user.referred_by_id:
+        referrer = await db.get(User, user.referred_by_id)
+        if referrer:
+            referrer.pool_balance += round(mined * REFERRAL_MINING_SHARE, 4)
 
     await db.commit()
     return {"ok": True, "claimed": mined, "pool_balance": round(user.pool_balance, 4)}
