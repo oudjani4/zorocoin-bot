@@ -576,7 +576,7 @@ async def verify_level_upgrade(
     if datetime.utcnow() > pending.expires_at:
         raise HTTPException(400, "Upgrade request has expired, start a new upgrade")
 
-    tx_hash = "manual-unverified"
+    tx_hash = f"manual-unverified-{nonce}"
 
     existing_payment = await db.execute(select(ProcessedPayment).where(ProcessedPayment.tx_hash == tx_hash))
     if existing_payment.scalar_one_or_none():
