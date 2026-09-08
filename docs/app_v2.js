@@ -438,6 +438,7 @@ document.getElementById("minerUpgradeBtn").addEventListener("click", async () =>
   try {
     await refreshState();
     await fetchLevelsList();
+    await loadWithdrawHistory();
     const refStats = await apiGet("/api/referral-stats");
     document.getElementById("refCount").textContent = refStats.referred_count;
     document.getElementById("refBonusLabel").textContent = refStats.bonus_per_referral;
