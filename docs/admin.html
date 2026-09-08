@@ -373,6 +373,11 @@
       <input type="text" id="userSearch" placeholder="ابحث بالمعرف أو المحفظة...">
       <button id="userSearchBtn">بحث</button>
     </div>
+    <div class="filter-row">
+      <button class="chip active" data-referrer="all">الكل</button>
+      <button class="chip" data-referrer="yes">لديهم محيل</button>
+      <button class="chip" data-referrer="no">بدون محيل</button>
+    </div>
     <div id="usersList"></div>
   </section>
 
@@ -523,17 +528,32 @@ document.getElementById("userSearch").addEventListener("keydown", e => {
   if (e.key === "Enter") loadUsers(document.getElementById("userSearch").value.trim());
 });
 
+let currentReferrerFilter = "all";
+
 async function loadUsers(search = "") {
   const list = document.getElementById("usersList");
   list.innerHTML = '<div class="loading">جارِ التحميل...</div>';
   try {
-    const q = search ? `?search=${encodeURIComponent(search)}` : "";
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (currentReferrerFilter === "yes") params.set("has_referrer", "true");
+    if (currentReferrerFilter === "no") params.set("has_referrer", "false");
+    const q = params.toString() ? `?${params.toString()}` : "";
     const users = await apiCall(`/admin/users${q}`);
     renderUsers(users);
   } catch (e) {
     list.innerHTML = `<div class="empty-state">تعذر تحميل المستخدمين</div>`;
   }
 }
+
+document.querySelectorAll("#usersView .filter-row .chip").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#usersView .filter-row .chip").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentReferrerFilter = btn.dataset.referrer;
+    loadUsers(document.getElementById("userSearch").value.trim());
+  });
+});
 
 function renderUsers(users) {
   const list = document.getElementById("usersList");

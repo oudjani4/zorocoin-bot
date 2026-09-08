@@ -770,8 +770,12 @@ async def admin_update_task_titles(
 
 
 @app.get("/admin/users")
-async def admin_list_users(search: str = "", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+async def admin_list_users(search: str = "", has_referrer: bool | None = None, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     query = select(User)
+    if has_referrer is True:
+        query = query.where(User.referred_by_id.is_not(None))
+    elif has_referrer is False:
+        query = query.where(User.referred_by_id.is_(None))
     if search:
         s = search.strip()
         if s.lstrip("-").isdigit():
