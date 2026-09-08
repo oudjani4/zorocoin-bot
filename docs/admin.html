@@ -698,6 +698,15 @@ function renderWithdrawals(items) {
         <span class="kv-label">المحفظة</span>
         <span class="kv-value wallet-value">${w.wallet_address}</span>
       </div>
+      <div class="kv-row">
+        <span class="kv-label">وقت الطلب</span>
+        <span class="kv-value">${w.created_at ? new Date(w.created_at).toLocaleString("ar-EG") : "—"}</span>
+      </div>
+      ${w.processed_at ? `
+      <div class="kv-row">
+        <span class="kv-label">وقت التنفيذ</span>
+        <span class="kv-value">${new Date(w.processed_at).toLocaleString("ar-EG")}</span>
+      </div>` : ""}
       ${w.tx_hash ? `
       <div class="kv-row">
         <span class="kv-label">Tx Hash</span>

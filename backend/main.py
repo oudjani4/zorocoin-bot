@@ -924,6 +924,7 @@ async def admin_list_withdrawals(status: str = "pending", db: AsyncSession = Dep
         "wallet_address": w.wallet_address, "amount_zoro": round(w.amount_zoro, 4),
         "amount_ton": round(w.amount_ton, 4), "status": w.status, "tx_hash": w.tx_hash,
         "created_at": w.created_at.isoformat() if w.created_at else None,
+        "processed_at": w.processed_at.isoformat() if w.processed_at else None,
     } for w, u in rows]
 
 
