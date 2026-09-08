@@ -769,6 +769,31 @@ async def admin_update_task_titles(
     return {"success": True, "updated_ids": updated}
 
 
+@app.post("/admin/fix-old-referrals")
+async def fix_old_referrals(
+    referral_code: str,
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_admin),
+):
+    ref_result = await db.execute(select(User).where(User.referral_code == referral_code))
+    referrer = ref_result.scalar_one_or_none()
+    if not referrer:
+        return {"ok": False, "error": "referral code not found"}
+
+    result = await db.execute(
+        select(User).where(User.referred_by_id.is_(None), User.id != referrer.id)
+    )
+    users = result.scalars().all()
+
+    count = 0
+    for u in users:
+        u.referred_by_id = referrer.id
+        count += 1
+
+    await db.commit()
+    return {"ok": True, "linked_count": count, "referrer_telegram_id": referrer.telegram_id}
+
+
 @app.get("/admin/users")
 async def admin_list_users(search: str = "", has_referrer: bool | None = None, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     query = select(User)
