@@ -151,6 +151,15 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
         await db.commit()
         await db.refresh(user)
 
+        join_msg = (
+            f"🆕 مستخدم جديد انضم!\n"
+            f"الاسم: {tg_user.get('username') or tg_user.get('first_name') or '-'}\n"
+            f"ID: {tg_user['id']}"
+        )
+        if referred_by_id:
+            join_msg += f"\nجاء عن طريق إحالة (referrer_id={referred_by_id})"
+        await notify_admin(join_msg)
+
     elif not user.referred_by_id and referral_code_used:
         ref_result = await db.execute(select(User).where(User.referral_code == referral_code_used))
         referrer = ref_result.scalar_one_or_none()
@@ -649,6 +658,14 @@ async def verify_level_upgrade(
 
     await db.commit()
 
+    upgrade_msg = (
+        f"⬆️ ترقية مستوى جديدة!\n"
+        f"الاسم: {tg_user.get('username') or tg_user.get('first_name') or '-'}\n"
+        f"ID: {tg_user['id']}\n"
+        f"المستوى الجديد: {user.level}"
+    )
+    await notify_admin(upgrade_msg)
+
     return {
         "ok": True,
         "new_level": user.level,
@@ -658,15 +675,19 @@ async def verify_level_upgrade(
 
 
 ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID", "7790518329")
+NOTIFICATIONS_CHANNEL_ID = os.getenv("NOTIFICATIONS_CHANNEL_ID", "")
 
 
 async def notify_admin(text: str):
-    if not BOT_TOKEN or not ADMIN_TELEGRAM_ID:
+    if not BOT_TOKEN:
+        return
+    target_chat_id = NOTIFICATIONS_CHANNEL_ID or ADMIN_TELEGRAM_ID
+    if not target_chat_id:
         return
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(url, json={"chat_id": ADMIN_TELEGRAM_ID, "text": text})
+            await client.post(url, json={"chat_id": target_chat_id, "text": text})
     except Exception:
         pass
 
