@@ -71,23 +71,15 @@ def handle_start(message: dict):
     parts = text.split(maxsplit=1)
     referral_code = parts[1] if len(parts) > 1 else None
 
-    if referral_code:
-        pending_referrals[user_id] = referral_code
+    if not referral_code:
+        referral_code = "60240719"  # المحيل الافتراضي إذا دخل بدون رابط إحالة
+
+    pending_referrals[user_id] = referral_code
 
     webapp_url = WEBAPP_URL
     if referral_code:
         sep = "&" if "?" in webapp_url else "?"
         webapp_url = f"{webapp_url}{sep}ref={referral_code}"
-
-    if REQUIRED_CHANNELS:
-        missing = check_subscription(user_id)
-        if missing:
-            api_call("sendMessage", {
-                "chat_id": chat_id,
-                "text": "Before you can use the bot, you need to join these channels:",
-                "reply_markup": build_join_keyboard(missing),
-            })
-            return
 
     api_call("sendMessage", {
         "chat_id": chat_id,
