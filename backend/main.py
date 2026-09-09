@@ -214,6 +214,7 @@ async def me(
     db: AsyncSession = Depends(get_db),
 ):
     ref_code = payload.referral_code if payload else None
+    print("DEBUG ref_code=" + repr(ref_code))
     user = await get_or_create_user(db, tg_user, referral_code_used=ref_code)
 
     tasks_result = await db.execute(select(RequiredTask).where(RequiredTask.is_active == True))
