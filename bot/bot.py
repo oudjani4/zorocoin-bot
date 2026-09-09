@@ -16,6 +16,8 @@ API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("zoro-bot")
 
+pending_referrals: dict[int, str] = {}
+
 
 def api_call(method: str, params: dict | None = None) -> dict:
     """Generic wrapper around a Telegram Bot API call."""
@@ -69,6 +71,9 @@ def handle_start(message: dict):
     parts = text.split(maxsplit=1)
     referral_code = parts[1] if len(parts) > 1 else None
 
+    if referral_code:
+        pending_referrals[user_id] = referral_code
+
     webapp_url = WEBAPP_URL
     if referral_code:
         sep = "&" if "?" in webapp_url else "?"
@@ -110,12 +115,18 @@ def handle_check_sub_callback(callback: dict):
         })
         return
 
+    referral_code = pending_referrals.pop(user_id, None)
+    webapp_url = WEBAPP_URL
+    if referral_code:
+        sep = "&" if "?" in webapp_url else "?"
+        webapp_url = f"{webapp_url}{sep}ref={referral_code}"
+
     api_call("answerCallbackQuery", {"callback_query_id": callback_id})
     api_call("editMessageText", {
         "chat_id": chat_id,
         "message_id": message_id,
         "text": "All set! ✅ You can now open the app:",
-        "reply_markup": build_webapp_keyboard(WEBAPP_URL),
+        "reply_markup": build_webapp_keyboard(webapp_url),
     })
 
 
