@@ -597,7 +597,7 @@ function renderUsers(users) {
       </div>
       <div class="actions">
         <button class="btn-level" onclick="openLevelModal(${u.id}, ${u.level})">تعديل المستوى</button>
-        <button class="btn-reset" onclick="resetUser(${u.id}, '${escapeHtml(u.first_name || u.username || u.telegram_id)}')">تصفير الرصيد</button>
+        <button class="btn-reset" onclick='resetUser(${u.id}, ${JSON.stringify(u.first_name || u.username || u.telegram_id)})'>تصفير الرصيد</button>
       </div>
     </div>
   `).join("");
