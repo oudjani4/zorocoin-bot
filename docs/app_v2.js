@@ -258,7 +258,7 @@ function render(data) {
 
   // ---- الإحالة ----
   const botUsername = "zorrocoin_bot"; // ⚠️ عدّله لاسم يوزر البوت بتاعك
-  const refLink = `https://t.me/${botUsername}?start=${data.referral_code}`;
+  const refLink = `https://t.me/${botUsername}?startapp=${data.referral_code}`;
   try { document.getElementById("refLinkText").textContent = refLink; } catch(e) { tg.showAlert("REF LINK ERROR: " + e.message); }
   window._refLink = refLink;
 }
