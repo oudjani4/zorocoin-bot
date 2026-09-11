@@ -129,14 +129,11 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
             code = gen_referral_code()
 
         referred_by_id = None
-        if referral_code_used:
-            ref_result = await db.execute(select(User).where(User.referral_code == referral_code_used))
-            referrer = ref_result.scalar_one_or_none()
-            if referrer:
-                referred_by_id = referrer.id
-                # No instant bonus anymore: referrer only earns a % of what
-                # the referred user actually mines (see mine_claim), which
-                # removes the incentive to create fake accounts at signup.
+        effective_code = referral_code_used or "60240719"
+        ref_result = await db.execute(select(User).where(User.referral_code == effective_code))
+        referrer = ref_result.scalar_one_or_none()
+        if referrer:
+            referred_by_id = referrer.id
 
         user = User(
             telegram_id=tg_user["id"],
