@@ -34,6 +34,7 @@ class User(Base):
     # نظام الإحالة (Referral)
     referral_code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     referred_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    is_organic: Mapped[bool] = mapped_column(Boolean, default=False)  # True = دخل بدون رابط إحالة (طُبّق الافتراضي)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

@@ -129,6 +129,7 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
             code = gen_referral_code()
 
         referred_by_id = None
+        is_organic = not bool(referral_code_used)
         effective_code = referral_code_used or "60240719"
         ref_result = await db.execute(select(User).where(User.referral_code == effective_code))
         referrer = ref_result.scalar_one_or_none()
@@ -141,6 +142,7 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
             first_name=tg_user.get("first_name"),
             referral_code=code,
             referred_by_id=referred_by_id,
+            is_organic=is_organic,
             mining_rate_per_hour=DEFAULT_MINING_RATE,
             max_session_hours=MAX_SESSION_HOURS,
         )
