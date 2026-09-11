@@ -71,13 +71,21 @@ def handle_start(message: dict):
     parts = text.split(maxsplit=1)
     referral_code = parts[1] if len(parts) > 1 else None
 
-    if referral_code:
-        pending_referrals[user_id] = referral_code
+    if not referral_code:
+        api_call("sendMessage", {
+            "chat_id": chat_id,
+            "text": (
+                "🚫 الدخول متاح فقط عبر رابط دعوة صحيح.\n\n"
+                "لازم تستخدم رابط دعوة من صديق عشان تقدر تفتح التطبيق."
+            ),
+        })
+        return
+
+    pending_referrals[user_id] = referral_code
 
     webapp_url = WEBAPP_URL
-    if referral_code:
-        sep = "&" if "?" in webapp_url else "?"
-        webapp_url = f"{webapp_url}{sep}ref={referral_code}"
+    sep = "&" if "?" in webapp_url else "?"
+    webapp_url = f"{webapp_url}{sep}ref={referral_code}"
 
     api_call("sendMessage", {
         "chat_id": chat_id,
