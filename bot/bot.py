@@ -71,10 +71,8 @@ def handle_start(message: dict):
     parts = text.split(maxsplit=1)
     referral_code = parts[1] if len(parts) > 1 else None
 
-    if not referral_code:
-        referral_code = "60240719"  # المحيل الافتراضي إذا دخل بدون رابط إحالة
-
-    pending_referrals[user_id] = referral_code
+    if referral_code:
+        pending_referrals[user_id] = referral_code
 
     webapp_url = WEBAPP_URL
     if referral_code:
