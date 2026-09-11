@@ -1,7 +1,8 @@
-import hashlib
+++import hashlib
 import os
 import random
-import secrets
+im
+port secrets
 import string
 from datetime import datetime, timedelta
 
@@ -130,7 +131,7 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
 
         referred_by_id = None
         is_organic = not bool(referral_code_used)
-        effective_code = referral_code_used or "60240719"
+        effective_code = referral_code_used
         ref_result = await db.execute(select(User).where(User.referral_code == effective_code))
         referrer = ref_result.scalar_one_or_none()
         if referrer:
