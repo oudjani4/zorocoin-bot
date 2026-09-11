@@ -24,12 +24,14 @@ BACKEND_URL = os.getenv("BACKEND_PUBLIC_URL", "https://zoro-backend-5jyv.onrende
 
 
 def is_valid_referral_code(code: str) -> bool:
-    try:
-        r = requests.get(f"{BACKEND_URL}/api/validate-referral-code", params={"code": code}, timeout=10)
-        return r.json().get("valid", False)
-    except Exception as e:
-        log.error(f"validate-referral-code failed: {e}")
-        return False
+    for attempt in range(3):
+        try:
+            r = requests.get(f"{BACKEND_URL}/api/validate-referral-code", params={"code": code}, timeout=15)
+            data = r.json()
+            return data.get("valid", False)
+        except Exception as e:
+            log.error(f"validate-referral-code failed (attempt {attempt+1}): {e}")
+    return False
 
 
 def send_app_button(chat_id: int, user_id: int, referral_code: str):
