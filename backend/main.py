@@ -1,8 +1,7 @@
-++import hashlib
+import hashlib
 import os
 import random
-im
-port secrets
+import secrets
 import string
 from datetime import datetime, timedelta
 
@@ -214,7 +213,7 @@ async def me(
     db: AsyncSession = Depends(get_db),
 ):
     ref_code = payload.referral_code if payload else None
-    print("DEBUG ref_code=" + repr(ref_code))
+    print("DEBUG payload=" + repr(payload) + " ref_code=" + repr(ref_code) + " tg_user_id=" + repr(tg_user.get("id")))
     user = await get_or_create_user(db, tg_user, referral_code_used=ref_code)
 
     tasks_result = await db.execute(select(RequiredTask).where(RequiredTask.is_active == True))
