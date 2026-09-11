@@ -101,19 +101,19 @@ def handle_start(message: dict):
     parts = text.split(maxsplit=1)
     referral_code = parts[1] if len(parts) > 1 else None
 
-    if not referral_code:
-        awaiting_referral.add(user_id)
-        api_call("sendMessage", {
-            "chat_id": chat_id,
-            "text": (
-                "🚫 الدخول متاح فقط عبر رابط دعوة صحيح.\n\n"
-                "ابعتلي كود الشخص اللي دعاك (referral code) عشان تقدر تفتح التطبيق:"
-            ),
-        })
+    if referral_code and is_valid_referral_code(referral_code):
+        awaiting_referral.discard(user_id)
+        send_app_button(chat_id, user_id, referral_code)
         return
 
-    awaiting_referral.discard(user_id)
-    send_app_button(chat_id, user_id, referral_code)
+    awaiting_referral.add(user_id)
+    api_call("sendMessage", {
+        "chat_id": chat_id,
+        "text": (
+            "🚫 الدخول متاح فقط عبر رابط دعوة صحيح.\n\n"
+            "ابعتلي كود الشخص اللي دعاك (referral code) عشان تقدر تفتح التطبيق:"
+        ),
+    })
 
 
 def handle_check_sub_callback(callback: dict):
