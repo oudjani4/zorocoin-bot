@@ -17,6 +17,36 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("zoro-bot")
 
 pending_referrals: dict[int, str] = {}
+awaiting_referral: set[int] = set()
+verified_users: set[int] = set()
+
+BACKEND_URL = os.getenv("BACKEND_PUBLIC_URL", "https://zoro-backend-5jyv.onrender.com")
+
+
+def is_valid_referral_code(code: str) -> bool:
+    try:
+        r = requests.get(f"{BACKEND_URL}/api/validate-referral-code", params={"code": code}, timeout=10)
+        return r.json().get("valid", False)
+    except Exception as e:
+        log.error(f"validate-referral-code failed: {e}")
+        return False
+
+
+def send_app_button(chat_id: int, user_id: int, referral_code: str):
+    verified_users.add(user_id)
+    pending_referrals[user_id] = referral_code
+    webapp_url = WEBAPP_URL
+    sep = "&" if "?" in webapp_url else "?"
+    webapp_url = f"{webapp_url}{sep}ref={referral_code}"
+    api_call("sendMessage", {
+        "chat_id": chat_id,
+        "text": (
+            "Welcome to Zoro Airdrop! 🎉\n"
+            "Link your wallet and start earning points now. When the token launches, you\'ll receive your share based on your balance.\n\n"
+            "Tap the button below to open the app:"
+        ),
+        "reply_markup": build_webapp_keyboard(webapp_url),
+    })
 
 
 def api_call(method: str, params: dict | None = None) -> dict:
@@ -72,30 +102,18 @@ def handle_start(message: dict):
     referral_code = parts[1] if len(parts) > 1 else None
 
     if not referral_code:
+        awaiting_referral.add(user_id)
         api_call("sendMessage", {
             "chat_id": chat_id,
             "text": (
                 "🚫 الدخول متاح فقط عبر رابط دعوة صحيح.\n\n"
-                "لازم تستخدم رابط دعوة من صديق عشان تقدر تفتح التطبيق."
+                "ابعتلي كود الشخص اللي دعاك (referral code) عشان تقدر تفتح التطبيق:"
             ),
         })
         return
 
-    pending_referrals[user_id] = referral_code
-
-    webapp_url = WEBAPP_URL
-    sep = "&" if "?" in webapp_url else "?"
-    webapp_url = f"{webapp_url}{sep}ref={referral_code}"
-
-    api_call("sendMessage", {
-        "chat_id": chat_id,
-        "text": (
-            "Welcome to Zoro Airdrop! 🎉\n"
-            "Link your wallet and start earning points now. When the token launches, you'll receive your share based on your balance.\n\n"
-            "Tap the button below to open the app:"
-        ),
-        "reply_markup": build_webapp_keyboard(webapp_url),
-    })
+    awaiting_referral.discard(user_id)
+    send_app_button(chat_id, user_id, referral_code)
 
 
 def handle_check_sub_callback(callback: dict):
@@ -130,11 +148,33 @@ def handle_check_sub_callback(callback: dict):
 
 def handle_fallback(message: dict):
     chat_id = message["chat"]["id"]
-    api_call("sendMessage", {
-        "chat_id": chat_id,
-        "text": "Use the button below to open the app and start earning:",
-        "reply_markup": build_webapp_keyboard(WEBAPP_URL),
-    })
+    user_id = message["from"]["id"]
+    text = message.get("text", "").strip()
+
+    if user_id in verified_users:
+        api_call("sendMessage", {
+            "chat_id": chat_id,
+            "text": "Use the button below to open the app and start earning:",
+            "reply_markup": build_webapp_keyboard(WEBAPP_URL),
+        })
+        return
+
+    awaiting_referral.add(user_id)
+    if not text:
+        api_call("sendMessage", {
+            "chat_id": chat_id,
+            "text": "🚫 الدخول متاح فقط عبر رابط دعوة صحيح.\n\nابعتلي كود الشخص اللي دعاك (referral code):",
+        })
+        return
+
+    if is_valid_referral_code(text):
+        awaiting_referral.discard(user_id)
+        send_app_button(chat_id, user_id, text)
+    else:
+        api_call("sendMessage", {
+            "chat_id": chat_id,
+            "text": "❌ الكود غير صحيح. تأكد منه وابعته مرة ثانية:",
+        })
 
 
 def process_update(update: dict):

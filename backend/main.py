@@ -697,6 +697,13 @@ class WithdrawPayload(BaseModel):
     amount_zoro: float
 
 
+@app.get("/api/validate-referral-code")
+async def validate_referral_code(code: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.referral_code == code))
+    referrer = result.scalar_one_or_none()
+    return {"valid": referrer is not None}
+
+
 @app.post("/api/withdraw")
 async def request_withdraw(
     payload: WithdrawPayload,
