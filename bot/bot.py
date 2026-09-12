@@ -96,10 +96,18 @@ def build_webapp_keyboard(url: str) -> dict:
     }
 
 
+MAINTENANCE_MODE = True
+MAINTENANCE_MESSAGE = "🛠️ التطبيق متوقف مؤقتًا لإجراء صيانة وإصلاح مشكلة تقنية في نظام الإحالة. هنرجع قريبًا، شكرًا لصبركم 🙏"
+
+
 def handle_start(message: dict):
     chat_id = message["chat"]["id"]
     user_id = message["from"]["id"]
     text = message.get("text", "")
+
+    if MAINTENANCE_MODE:
+        api_call("sendMessage", {"chat_id": chat_id, "text": MAINTENANCE_MESSAGE})
+        return
     parts = text.split(maxsplit=1)
     referral_code = parts[1] if len(parts) > 1 else None
 
@@ -152,6 +160,10 @@ def handle_fallback(message: dict):
     chat_id = message["chat"]["id"]
     user_id = message["from"]["id"]
     text = message.get("text", "").strip()
+
+    if MAINTENANCE_MODE:
+        api_call("sendMessage", {"chat_id": chat_id, "text": MAINTENANCE_MESSAGE})
+        return
 
     if user_id in verified_users:
         api_call("sendMessage", {
