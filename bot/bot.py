@@ -168,6 +168,10 @@ def handle_check_sub_callback(callback: dict):
 
     missing = check_subscription(user_id)
     if missing:
+        import time as _time
+        _time.sleep(1.5)
+        missing = check_subscription(user_id)
+    if missing:
         api_call("answerCallbackQuery", {
             "callback_query_id": callback_id,
             "text": "You still need to join some channels ⚠️",
