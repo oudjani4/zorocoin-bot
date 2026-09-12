@@ -63,6 +63,22 @@ def mining_rate_for_level(level: int) -> float:
 
 app = FastAPI(title="Zoro Airdrop API")
 
+MAINTENANCE_MODE = True
+
+
+@app.middleware("http")
+async def maintenance_mode_middleware(request, call_next):
+    if MAINTENANCE_MODE and not request.url.path.startswith("/admin"):
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "maintenance",
+                "message": "The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon."
+            },
+        )
+    return await call_next(request)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
