@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, init_db, AsyncSessionLocal
 from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest, VideoTaskSubmission
-from auth import get_current_telegram_user
+from auth import get_current_telegram_user, verify_telegram_init_data
 
 load_dotenv()
 
@@ -64,21 +64,32 @@ def mining_rate_for_level(level: int) -> float:
 app = FastAPI(title="Zoro Airdrop API")
 
 MAINTENANCE_MODE = True
+MAINTENANCE_ALLOWED_IDS = {8267292613, 7871311618, 8498544075}
 
 
 @app.middleware("http")
 async def maintenance_mode_middleware(request, call_next):
     if MAINTENANCE_MODE and not request.url.path.startswith("/admin"):
-        from fastapi.responses import JSONResponse
-        return JSONResponse(
-            status_code=503,
-            content={
-                "detail": {
-                    "error": "maintenance",
-                    "message": "The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon."
-                }
-            },
-        )
+        allowed = False
+        init_data = request.headers.get("x-telegram-init-data")
+        if init_data:
+            try:
+                user = verify_telegram_init_data(init_data)
+                if user.get("id") in MAINTENANCE_ALLOWED_IDS:
+                    allowed = True
+            except Exception:
+                pass
+        if not allowed:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": {
+                        "error": "maintenance",
+                        "message": "The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon."
+                    }
+                },
+            )
     return await call_next(request)
 
 app.add_middleware(
