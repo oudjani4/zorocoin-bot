@@ -75,10 +75,11 @@ async def maintenance_mode_middleware(request, call_next):
         if init_data:
             try:
                 user = verify_telegram_init_data(init_data)
+                print(f"DEBUG maintenance check: user_id={user.get('id')} allowed_ids={MAINTENANCE_ALLOWED_IDS}")
                 if user.get("id") in MAINTENANCE_ALLOWED_IDS:
                     allowed = True
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"DEBUG maintenance check failed: {e}")
         if not allowed:
             from fastapi.responses import JSONResponse
             return JSONResponse(
