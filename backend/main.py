@@ -1145,10 +1145,13 @@ async def register_referral(
 async def debug_check_referrals(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.referred_by_id.is_not(None)))
     users = result.scalars().all()
-    return {
-        "count": len(users),
-        "referred_users": [
-            {"telegram_id": u.telegram_id, "referred_by_id": u.referred_by_id}
-            for u in users
-        ],
-    }
+    out = []
+    for u in users:
+        r = await db.get(User, u.referred_by_id)
+        out.append({
+            "referred_telegram_id": u.telegram_id,
+            "referred_code_used": u.referral_code,
+            "referrer_telegram_id": r.telegram_id if r else None,
+            "referrer_own_code": r.referral_code if r else None,
+        })
+    return {"count": len(users), "referred_users": out}
