@@ -132,6 +132,15 @@ def handle_check_sub_callback(callback: dict):
     chat_id = callback["message"]["chat"]["id"]
     message_id = callback["message"]["message_id"]
 
+    if MAINTENANCE_MODE:
+        api_call("answerCallbackQuery", {"callback_query_id": callback_id})
+        api_call("editMessageText", {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": MAINTENANCE_MESSAGE,
+        })
+        return
+
     missing = check_subscription(user_id)
     if missing:
         api_call("answerCallbackQuery", {
