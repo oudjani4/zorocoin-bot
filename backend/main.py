@@ -1139,3 +1139,16 @@ async def register_referral(
     }
     user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
     return {"ok": True, "referred_by_id": user.referred_by_id}
+
+
+@app.get("/api/debug/check-referrals")
+async def debug_check_referrals(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.referred_by_id.is_not(None)))
+    users = result.scalars().all()
+    return {
+        "count": len(users),
+        "referred_users": [
+            {"telegram_id": u.telegram_id, "referred_by_id": u.referred_by_id}
+            for u in users
+        ],
+    }
