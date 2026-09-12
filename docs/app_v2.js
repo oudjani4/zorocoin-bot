@@ -69,6 +69,11 @@ async function apiPost(path, body) {
       gateError.missingChannels = detail.missing_channels || [];
       throw gateError;
     }
+    if (detail && typeof detail === "object" && detail.error === "maintenance") {
+      const maintenanceError = new Error(detail.message || "The app is under maintenance");
+      maintenanceError.isMaintenance = true;
+      throw maintenanceError;
+    }
     throw new Error(typeof detail === "string" ? detail : "خطأ في الطلب");
   }
   return res.json();
@@ -143,9 +148,17 @@ function getReferralCodeFromStartParam() {
 
 async function refreshState() {
   const referral_code = getReferralCodeFromStartParam();
-  const data = await apiPost("/api/me", { referral_code });
-  currentState = data;
-  render(data);
+  try {
+    const data = await apiPost("/api/me", { referral_code });
+    currentState = data;
+    render(data);
+  } catch (e) {
+    if (e.isMaintenance) {
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;padding:24px;text-align:center;color:#fff;font-size:18px;">' + (e.message || "The app is under maintenance.") + '</div>';
+      return;
+    }
+    throw e;
+  }
 }
 
 function render(data) {

@@ -73,8 +73,10 @@ async def maintenance_mode_middleware(request, call_next):
         return JSONResponse(
             status_code=503,
             content={
-                "error": "maintenance",
-                "message": "The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon."
+                "detail": {
+                    "error": "maintenance",
+                    "message": "The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon."
+                }
             },
         )
     return await call_next(request)
