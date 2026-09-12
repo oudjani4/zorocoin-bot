@@ -97,6 +97,8 @@ def build_webapp_keyboard(url: str) -> dict:
 
 
 MAINTENANCE_MODE = True
+MAINTENANCE_ALLOWED_IDS = {8267292613, 7871311618, 8498544075}
+MAINTENANCE_ALLOWED_IDS = {8267292613, 7871311618, 8498544075}
 MAINTENANCE_MESSAGE = "🛠️ The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon, thank you for your patience 🙏"
 
 
@@ -105,7 +107,7 @@ def handle_start(message: dict):
     user_id = message["from"]["id"]
     text = message.get("text", "")
 
-    if MAINTENANCE_MODE:
+    if MAINTENANCE_MODE and user_id not in MAINTENANCE_ALLOWED_IDS:
         api_call("sendMessage", {"chat_id": chat_id, "text": MAINTENANCE_MESSAGE})
         return
     parts = text.split(maxsplit=1)
@@ -132,7 +134,7 @@ def handle_check_sub_callback(callback: dict):
     chat_id = callback["message"]["chat"]["id"]
     message_id = callback["message"]["message_id"]
 
-    if MAINTENANCE_MODE:
+    if MAINTENANCE_MODE and user_id not in MAINTENANCE_ALLOWED_IDS:
         api_call("answerCallbackQuery", {"callback_query_id": callback_id})
         api_call("editMessageText", {
             "chat_id": chat_id,
@@ -170,7 +172,7 @@ def handle_fallback(message: dict):
     user_id = message["from"]["id"]
     text = message.get("text", "").strip()
 
-    if MAINTENANCE_MODE:
+    if MAINTENANCE_MODE and user_id not in MAINTENANCE_ALLOWED_IDS:
         api_call("sendMessage", {"chat_id": chat_id, "text": MAINTENANCE_MESSAGE})
         return
 
