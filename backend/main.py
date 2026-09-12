@@ -1139,3 +1139,21 @@ async def register_referral(
     }
     user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
     return {"ok": True, "referred_by_id": user.referred_by_id}
+
+
+@app.post("/api/admin/fix-tasks")
+async def fix_tasks(secret: str, db: AsyncSession = Depends(get_db)):
+    if secret != os.getenv("ADMIN_SECRET", ""):
+        raise HTTPException(403, "Forbidden")
+    result = await db.execute(select(RequiredTask))
+    all_tasks = result.scalars().all()
+    updated = []
+    for t in all_tasks:
+        if t.channel_username in REQUIRED_CHANNELS_ENV:
+            t.reward_amount = 10
+            t.is_active = True
+        else:
+            t.is_active = False
+        updated.append({"channel": t.channel_username, "reward": t.reward_amount, "active": t.is_active})
+    await db.commit()
+    return {"updated": updated}
