@@ -97,7 +97,7 @@ def build_webapp_keyboard(url: str) -> dict:
 
 
 MAINTENANCE_MODE = True
-MAINTENANCE_MESSAGE = "🛠️ التطبيق متوقف مؤقتًا لإجراء صيانة وإصلاح مشكلة تقنية في نظام الإحالة. هنرجع قريبًا، شكرًا لصبركم 🙏"
+MAINTENANCE_MESSAGE = "🛠️ The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon, thank you for your patience 🙏"
 
 
 def handle_start(message: dict):
