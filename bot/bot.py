@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from aiohttp import web
@@ -75,17 +76,25 @@ def api_call(method: str, params: dict | None = None) -> dict:
 
 
 def check_subscription(user_id: int) -> list:
-    """Returns the list of channels the user has not joined yet"""
+    """Returns the list of channels the user has not joined yet (checked in parallel for speed)"""
+    if not REQUIRED_CHANNELS:
+        return []
     not_joined = []
-    for channel in REQUIRED_CHANNELS:
-        r = api_call("getChatMember", {"chat_id": channel, "user_id": user_id})
-        if not r.get("ok"):
-            log.warning(f"Error checking {channel}: {r}")
-            not_joined.append(channel)
-            continue
-        status = r["result"]["status"]
-        if status in ("left", "kicked"):
-            not_joined.append(channel)
+    with ThreadPoolExecutor(max_workers=len(REQUIRED_CHANNELS)) as executor:
+        futures = {
+            executor.submit(api_call, "getChatMember", {"chat_id": channel, "user_id": user_id}): channel
+            for channel in REQUIRED_CHANNELS
+        }
+        for future in as_completed(futures):
+            channel = futures[future]
+            r = future.result()
+            if not r.get("ok"):
+                log.warning(f"Error checking {channel}: {r}")
+                not_joined.append(channel)
+                continue
+            status = r["result"]["status"]
+            if status in ("left", "kicked"):
+                not_joined.append(channel)
     return not_joined
 
 
