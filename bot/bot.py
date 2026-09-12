@@ -109,7 +109,7 @@ def build_webapp_keyboard(url: str) -> dict:
     }
 
 
-MAINTENANCE_MODE = True
+MAINTENANCE_MODE = False
 MAINTENANCE_ALLOWED_IDS = {8267292613, 7871311618, 8498544075}
 MAINTENANCE_ALLOWED_IDS = {8267292613, 7871311618, 8498544075}
 MAINTENANCE_MESSAGE = "🛠️ The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon, thank you for your patience 🙏"

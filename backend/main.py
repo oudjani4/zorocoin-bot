@@ -63,7 +63,7 @@ def mining_rate_for_level(level: int) -> float:
 
 app = FastAPI(title="Zoro Airdrop API")
 
-MAINTENANCE_MODE = True
+MAINTENANCE_MODE = False
 MAINTENANCE_ALLOWED_IDS = {8267292613, 7871311618, 8498544075}
 
 
