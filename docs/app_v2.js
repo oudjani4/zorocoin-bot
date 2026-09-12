@@ -27,6 +27,10 @@ tonConnectUI.onStatusChange(async (wallet) => {
       await apiPost("/api/link-wallet", { wallet_address: address });
       await refreshState();
     } catch (e) {
+      if (e.isMaintenance) {
+        tg.showAlert("Under maintenance. Please try again later.");
+        return;
+      }
       tg.showAlert("خطأ في ربط المحفظة: " + e.message + "\n" + (e.stack || "no stack"));
       console.error("link-wallet error:", e);
     }
@@ -146,6 +150,8 @@ function getReferralCodeFromStartParam() {
   return urlParams.get("ref");
 }
 
+let MAINTENANCE_ACTIVE = false;
+
 async function refreshState() {
   const referral_code = getReferralCodeFromStartParam();
   try {
@@ -154,7 +160,8 @@ async function refreshState() {
     render(data);
   } catch (e) {
     if (e.isMaintenance) {
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;padding:24px;text-align:center;color:#fff;font-size:18px;">' + (e.message || "The app is under maintenance.") + '</div>';
+      MAINTENANCE_ACTIVE = true;
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;padding:24px;text-align:center;color:#fff;font-size:18px;background:#000;">Under maintenance. Please try again later.</div>';
       return;
     }
     throw e;
