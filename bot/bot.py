@@ -34,9 +34,22 @@ def is_valid_referral_code(code: str) -> bool:
     return False
 
 
-def send_app_button(chat_id: int, user_id: int, referral_code: str):
+def register_referral_now(user_id: int, username: str | None, first_name: str | None, referral_code: str):
+    try:
+        requests.post(f"{BACKEND_URL}/api/register-referral", json={
+            "telegram_id": user_id,
+            "username": username,
+            "first_name": first_name,
+            "referral_code": referral_code,
+        }, timeout=15)
+    except Exception as e:
+        log.error(f"register-referral failed: {e}")
+
+
+def send_app_button(chat_id: int, user_id: int, referral_code: str, username: str | None = None, first_name: str | None = None):
     verified_users.add(user_id)
     pending_referrals[user_id] = referral_code
+    register_referral_now(user_id, username, first_name, referral_code)
     webapp_url = WEBAPP_URL
     sep = "&" if "?" in webapp_url else "?"
     webapp_url = f"{webapp_url}{sep}ref={referral_code}"
@@ -115,7 +128,8 @@ def handle_start(message: dict):
 
     if referral_code and is_valid_referral_code(referral_code):
         awaiting_referral.discard(user_id)
-        send_app_button(chat_id, user_id, referral_code)
+        from_user = message.get("from", {})
+        send_app_button(chat_id, user_id, referral_code, from_user.get("username"), from_user.get("first_name"))
         return
 
     awaiting_referral.add(user_id)
@@ -194,7 +208,8 @@ def handle_fallback(message: dict):
 
     if is_valid_referral_code(text):
         awaiting_referral.discard(user_id)
-        send_app_button(chat_id, user_id, text)
+        from_user = message.get("from", {})
+        send_app_button(chat_id, user_id, text, from_user.get("username"), from_user.get("first_name"))
     else:
         api_call("sendMessage", {
             "chat_id": chat_id,

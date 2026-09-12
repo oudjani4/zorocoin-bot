@@ -16,14 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, init_db, AsyncSessionLocal
 from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, ProcessedPayment, WithdrawalRequest, VideoTaskSubmission
-from auth import get_current_telegram_user, verify_telegram_init_data
+from auth import get_current_telegram_user
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 REQUIRED_CHANNELS_ENV = [c.strip() for c in os.getenv("REQUIRED_CHANNELS", "").split(",") if c.strip()]
 REFERRAL_BONUS = float(os.getenv("REFERRAL_BONUS", 25))
-REFERRAL_MINING_SHARE = float(os.getenv("REFERRAL_MINING_SHARE", 0.10))
 DEFAULT_MINING_RATE = float(os.getenv("MINING_RATE_PER_HOUR", 10))
 MAX_SESSION_HOURS = float(os.getenv("MAX_SESSION_HOURS", 3))
 
@@ -62,36 +61,6 @@ def mining_rate_for_level(level: int) -> float:
     return round(DEFAULT_MINING_RATE + (level - 1) * LEVEL_MINING_RATE_INCREMENT, 4)
 
 app = FastAPI(title="Zoro Airdrop API")
-
-MAINTENANCE_MODE = True
-MAINTENANCE_ALLOWED_IDS = {8267292613, 7871311618, 8498544075}
-
-
-@app.middleware("http")
-async def maintenance_mode_middleware(request, call_next):
-    if MAINTENANCE_MODE and not request.url.path.startswith("/admin"):
-        allowed = False
-        init_data = request.headers.get("x-telegram-init-data")
-        if init_data:
-            try:
-                user = verify_telegram_init_data(init_data)
-                print(f"DEBUG maintenance check: user_id={user.get('id')} allowed_ids={MAINTENANCE_ALLOWED_IDS}")
-                if user.get("id") in MAINTENANCE_ALLOWED_IDS:
-                    allowed = True
-            except Exception as e:
-                print(f"DEBUG maintenance check failed: {e}")
-        if not allowed:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "detail": {
-                        "error": "maintenance",
-                        "message": "The app is temporarily down for maintenance to fix a technical issue with the referral system. We'll be back soon."
-                    }
-                },
-            )
-    return await call_next(request)
 
 app.add_middleware(
     CORSMiddleware,
@@ -159,12 +128,12 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
             code = gen_referral_code()
 
         referred_by_id = None
-        is_organic = not bool(referral_code_used)
-        effective_code = referral_code_used
-        ref_result = await db.execute(select(User).where(User.referral_code == effective_code))
-        referrer = ref_result.scalar_one_or_none()
-        if referrer:
-            referred_by_id = referrer.id
+        if referral_code_used:
+            ref_result = await db.execute(select(User).where(User.referral_code == referral_code_used))
+            referrer = ref_result.scalar_one_or_none()
+            if referrer:
+                referred_by_id = referrer.id
+                referrer.pool_balance += REFERRAL_BONUS
 
         user = User(
             telegram_id=tg_user["id"],
@@ -172,30 +141,12 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
             first_name=tg_user.get("first_name"),
             referral_code=code,
             referred_by_id=referred_by_id,
-            is_organic=is_organic,
             mining_rate_per_hour=DEFAULT_MINING_RATE,
             max_session_hours=MAX_SESSION_HOURS,
         )
         db.add(user)
         await db.commit()
         await db.refresh(user)
-
-        join_msg = (
-            f"🆕 مستخدم جديد انضم!\n"
-            f"الاسم: {tg_user.get('username') or tg_user.get('first_name') or '-'}\n"
-            f"ID: {tg_user['id']}"
-        )
-        if referred_by_id:
-            join_msg += f"\nجاء عن طريق إحالة (referrer_id={referred_by_id})"
-        await notify_admin(join_msg)
-
-    elif not user.referred_by_id and referral_code_used:
-        ref_result = await db.execute(select(User).where(User.referral_code == referral_code_used))
-        referrer = ref_result.scalar_one_or_none()
-        if referrer and referrer.id != user.id:
-            user.referred_by_id = referrer.id
-            await db.commit()
-            await db.refresh(user)
 
     if not user.referral_code:
         code = gen_referral_code()
@@ -206,18 +157,6 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
         await db.refresh(user)
 
     return user
-
-
-async def get_user_for_update(db: AsyncSession, user_id: int) -> User:
-    """
-    Re-fetches the user with a row-level lock (SELECT ... FOR UPDATE).
-    Must be called right before reading/modifying balance-affecting fields
-    in the SAME request, so a concurrent duplicate request blocks until
-    this transaction commits instead of reading stale values (prevents
-    double-claim / double-spend race conditions from rapid duplicate calls).
-    """
-    result = await db.execute(select(User).where(User.id == user_id).with_for_update())
-    return result.scalar_one()
 
 
 def calc_pending_mined(user: User) -> float:
@@ -243,7 +182,6 @@ async def me(
     db: AsyncSession = Depends(get_db),
 ):
     ref_code = payload.referral_code if payload else None
-    print("DEBUG payload=" + repr(payload) + " ref_code=" + repr(ref_code) + " tg_user_id=" + repr(tg_user.get("id")))
     user = await get_or_create_user(db, tg_user, referral_code_used=ref_code)
 
     tasks_result = await db.execute(select(RequiredTask).where(RequiredTask.is_active == True))
@@ -371,7 +309,6 @@ async def claim_task(
     after the cooldown period (cooldown_hours).
     """
     user = await get_or_create_user(db, tg_user)
-    user = await get_user_for_update(db, user.id)
 
     task_result = await db.execute(select(RequiredTask).where(RequiredTask.id == task_id))
     task = task_result.scalar_one_or_none()
@@ -407,7 +344,6 @@ async def mine_start(
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_or_create_user(db, tg_user)
-    user = await get_user_for_update(db, user.id)
 
     if not user.wallet_address:
         raise HTTPException(400, "You need to link your wallet first")
@@ -426,7 +362,6 @@ async def mine_claim(
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_or_create_user(db, tg_user)
-    user = await get_user_for_update(db, user.id)
 
     if user.mining_started_at is None:
         raise HTTPException(400, "No active mining session")
@@ -434,11 +369,6 @@ async def mine_claim(
     mined = calc_pending_mined(user)
     user.pool_balance += mined
     user.mining_started_at = None
-
-    if user.referred_by_id:
-        referrer = await db.get(User, user.referred_by_id)
-        if referrer:
-            referrer.pool_balance += round(mined * REFERRAL_MINING_SHARE, 4)
 
     await db.commit()
     return {"ok": True, "claimed": mined, "pool_balance": round(user.pool_balance, 4)}
@@ -449,7 +379,6 @@ async def transfer_to_holding(
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_or_create_user(db, tg_user)
-    user = await get_user_for_update(db, user.id)
 
     amount = user.pool_balance
     if amount <= 0:
@@ -647,20 +576,7 @@ async def verify_level_upgrade(
     if datetime.utcnow() > pending.expires_at:
         raise HTTPException(400, "Upgrade request has expired, start a new upgrade")
 
-    if not user.wallet_address:
-        raise HTTPException(400, "No wallet connected for this user")
-
-    min_amount_nanoton = int(pending.price_ton * 1_000_000_000)
-    after_ts = int(pending.created_at.timestamp())
-
-    tx_hash = await find_matching_transaction(
-        sender_address=user.wallet_address,
-        min_amount_nanoton=min_amount_nanoton,
-        after_ts=after_ts,
-    )
-
-    if not tx_hash:
-        raise HTTPException(400, "Payment not found yet on-chain. Wait a bit and try again.")
+    tx_hash = f"manual-unverified-{nonce}"
 
     existing_payment = await db.execute(select(ProcessedPayment).where(ProcessedPayment.tx_hash == tx_hash))
     if existing_payment.scalar_one_or_none():
@@ -688,14 +604,6 @@ async def verify_level_upgrade(
 
     await db.commit()
 
-    upgrade_msg = (
-        f"⬆️ ترقية مستوى جديدة!\n"
-        f"الاسم: {tg_user.get('username') or tg_user.get('first_name') or '-'}\n"
-        f"ID: {tg_user['id']}\n"
-        f"المستوى الجديد: {user.level}"
-    )
-    await notify_admin(upgrade_msg)
-
     return {
         "ok": True,
         "new_level": user.level,
@@ -705,32 +613,21 @@ async def verify_level_upgrade(
 
 
 ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID", "7790518329")
-NOTIFICATIONS_CHANNEL_ID = os.getenv("NOTIFICATIONS_CHANNEL_ID", "")
 
 
 async def notify_admin(text: str):
-    if not BOT_TOKEN:
-        return
-    target_chat_id = NOTIFICATIONS_CHANNEL_ID or ADMIN_TELEGRAM_ID
-    if not target_chat_id:
+    if not BOT_TOKEN or not ADMIN_TELEGRAM_ID:
         return
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(url, json={"chat_id": target_chat_id, "text": text})
+            await client.post(url, json={"chat_id": ADMIN_TELEGRAM_ID, "text": text})
     except Exception:
         pass
 
 
 class WithdrawPayload(BaseModel):
     amount_zoro: float
-
-
-@app.get("/api/validate-referral-code")
-async def validate_referral_code(code: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.referral_code == code))
-    referrer = result.scalar_one_or_none()
-    return {"valid": referrer is not None}
 
 
 @app.post("/api/withdraw")
@@ -749,10 +646,10 @@ async def request_withdraw(
         raise HTTPException(400, "Invalid amount")
     if amount < MIN_WITHDRAWAL_ZORO:
         raise HTTPException(400, f"Minimum withdrawal is {MIN_WITHDRAWAL_ZORO} ZORO")
-    if amount > user.holding_balance:
+    if amount > user.pool_balance:
         raise HTTPException(400, "Your balance is insufficient for this withdrawal")
 
-    user.holding_balance -= amount
+    user.pool_balance -= amount
     amount_ton = amount / ZORO_TO_TON_RATE
 
     withdrawal = WithdrawalRequest(
@@ -827,38 +724,9 @@ async def admin_update_task_titles(
     return {"success": True, "updated_ids": updated}
 
 
-@app.post("/admin/fix-old-referrals")
-async def fix_old_referrals(
-    referral_code: str,
-    db: AsyncSession = Depends(get_db),
-    _: bool = Depends(verify_admin),
-):
-    ref_result = await db.execute(select(User).where(User.referral_code == referral_code))
-    referrer = ref_result.scalar_one_or_none()
-    if not referrer:
-        return {"ok": False, "error": "referral code not found"}
-
-    result = await db.execute(
-        select(User).where(User.referred_by_id.is_(None), User.id != referrer.id)
-    )
-    users = result.scalars().all()
-
-    count = 0
-    for u in users:
-        u.referred_by_id = referrer.id
-        count += 1
-
-    await db.commit()
-    return {"ok": True, "linked_count": count, "referrer_telegram_id": referrer.telegram_id}
-
-
 @app.get("/admin/users")
-async def admin_list_users(search: str = "", has_referrer: bool | None = None, db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
+async def admin_list_users(search: str = "", db: AsyncSession = Depends(get_db), _: bool = Depends(verify_admin)):
     query = select(User)
-    if has_referrer is True:
-        query = query.where(User.referred_by_id.is_not(None))
-    elif has_referrer is False:
-        query = query.where(User.referred_by_id.is_(None))
     if search:
         s = search.strip()
         if s.lstrip("-").isdigit():
@@ -982,7 +850,6 @@ async def admin_list_withdrawals(status: str = "pending", db: AsyncSession = Dep
         "wallet_address": w.wallet_address, "amount_zoro": round(w.amount_zoro, 4),
         "amount_ton": round(w.amount_ton, 4), "status": w.status, "tx_hash": w.tx_hash,
         "created_at": w.created_at.isoformat() if w.created_at else None,
-        "processed_at": w.processed_at.isoformat() if w.processed_at else None,
     } for w, u in rows]
 
 
@@ -1013,7 +880,7 @@ async def admin_reject_withdrawal(withdrawal_id: int, db: AsyncSession = Depends
         raise HTTPException(400, "This request has already been processed")
     user = await db.get(User, withdrawal.user_id)
     if user:
-        user.holding_balance += withdrawal.amount_zoro
+        user.pool_balance += withdrawal.amount_zoro
     withdrawal.status = "rejected"
     withdrawal.processed_at = datetime.utcnow()
     await db.commit()
@@ -1118,24 +985,3 @@ async def admin_reject_video_submission(
     sub.reviewed_at = datetime.utcnow()
     await db.commit()
     return {"status": "rejected"}
-
-
-class RegisterReferralPayload(BaseModel):
-    telegram_id: int
-    username: str | None = None
-    first_name: str | None = None
-    referral_code: str
-
-
-@app.post("/api/register-referral")
-async def register_referral(
-    payload: RegisterReferralPayload,
-    db: AsyncSession = Depends(get_db),
-):
-    tg_user = {
-        "id": payload.telegram_id,
-        "username": payload.username,
-        "first_name": payload.first_name,
-    }
-    user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
-    return {"ok": True, "referred_by_id": user.referred_by_id}
