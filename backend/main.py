@@ -1139,3 +1139,22 @@ async def register_referral(
     }
     user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
     return {"ok": True, "referred_by_id": user.referred_by_id}
+
+
+@app.get("/api/debug/find-user/{telegram_id}")
+async def debug_find_user(telegram_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.telegram_id == telegram_id))
+    all_matches = result.scalars().all()
+    return {
+        "count": len(all_matches),
+        "rows": [
+            {
+                "id": u.id,
+                "telegram_id": u.telegram_id,
+                "referred_by_id": u.referred_by_id,
+                "referral_code": u.referral_code,
+                "created_at": u.created_at.isoformat() if hasattr(u, "created_at") and u.created_at else None,
+            }
+            for u in all_matches
+        ],
+    }
