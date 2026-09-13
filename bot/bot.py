@@ -245,6 +245,7 @@ def process_update(update: dict):
 
 
 def holding_loop():
+    import time
     offset = 0
     log.info("Bot polling started")
     while True:
@@ -253,6 +254,7 @@ def holding_loop():
             data = r.json()
             if not data.get("ok"):
                 log.error(f"getUpdates failed: {data}")
+                time.sleep(5)
                 continue
             for update in data["result"]:
                 offset = update["update_id"] + 1
@@ -262,6 +264,7 @@ def holding_loop():
                     log.error(f"Error processing update: {e}")
         except Exception as e:
             log.error(f"Polling error: {e}")
+            time.sleep(3)
 
 
 async def health_check(request):
