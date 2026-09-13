@@ -186,7 +186,10 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
             f"ID: {tg_user['id']}"
         )
         if referred_by_id:
-            join_msg += f"\nجاء عن طريق إحالة (referrer_id={referred_by_id})"
+            referrer_label = referrer.username or referrer.first_name or str(referrer.telegram_id)
+            join_msg += f"\nالأبلاين (دعاه): {referrer_label} (ID: {referrer.telegram_id})"
+        else:
+            join_msg += f"\nالأبلاين: بدون إحالة (عضوي)"
         await notify_admin(join_msg)
 
     elif not user.referred_by_id and referral_code_used:
