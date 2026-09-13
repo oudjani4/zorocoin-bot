@@ -1187,3 +1187,30 @@ async def debug_pending_upgrades(telegram_id: int, db: AsyncSession = Depends(ge
             for p in pending_upgrades
         ],
     }
+
+
+@app.get("/api/debug/treasury-check")
+async def debug_treasury_check():
+    info = {
+        "TREASURY_WALLET_ADDRESS": TREASURY_WALLET_ADDRESS,
+        "TONCENTER_API_KEY_set": bool(TONCENTER_API_KEY),
+        "TONCENTER_BASE_URL": TONCENTER_BASE_URL,
+    }
+    if not TREASURY_WALLET_ADDRESS:
+        info["error"] = "TREASURY_WALLET_ADDRESS is empty"
+        return info
+    params = {"address": TREASURY_WALLET_ADDRESS, "limit": 10, "to_lt": 0, "archival": "true"}
+    headers = {"X-API-Key": TONCENTER_API_KEY} if TONCENTER_API_KEY else {}
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(f"{TONCENTER_BASE_URL}/getTransactions", params=params, headers=headers)
+        data = resp.json()
+    info["toncenter_ok"] = data.get("ok")
+    info["recent_transactions"] = [
+        {
+            "utime": tx.get("utime"),
+            "source": tx.get("in_msg", {}).get("source"),
+            "value": tx.get("in_msg", {}).get("value"),
+        }
+        for tx in data.get("result", [])[:10]
+    ]
+    return info
