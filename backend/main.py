@@ -606,8 +606,6 @@ async def find_matching_transaction(sender_address: str, min_amount_nanoton: int
             pass
         return addr.lower()
 
-    target = normalize(sender_address)
-
     for tx in data.get("result", []):
         try:
             utime = tx.get("utime", 0)
@@ -615,8 +613,7 @@ async def find_matching_transaction(sender_address: str, min_amount_nanoton: int
                 continue
             in_msg = tx.get("in_msg", {})
             value = int(in_msg.get("value", 0))
-            source = in_msg.get("source", "") or ""
-            if value >= min_amount_nanoton and normalize(source) == target:
+            if value >= min_amount_nanoton:
                 return tx.get("transaction_id", {}).get("hash")
         except (TypeError, ValueError):
             continue
