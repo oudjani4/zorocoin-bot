@@ -180,6 +180,10 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
         await db.commit()
         await db.refresh(user)
 
+        total_users_result = await db.execute(select(func.count()).select_from(User))
+        total_users = total_users_result.scalar()
+        event_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
         join_msg = (
             f"🆕 مستخدم جديد انضم!\n"
             f"الاسم: {tg_user.get('username') or tg_user.get('first_name') or '-'}\n"
@@ -190,7 +194,17 @@ async def get_or_create_user(db: AsyncSession, tg_user: dict, referral_code_used
             join_msg += f"\nالأبلاين (دعاه): {referrer_label} (ID: {referrer.telegram_id})"
         else:
             join_msg += f"\nالأبلاين: بدون إحالة (عضوي)"
+        join_msg += f"\n👥 إجمالي المستخدمين: {total_users}\n🕒 {event_time}"
         await notify_admin(join_msg)
+
+        public_msg = (
+            f"🎉 انضمام مستخدم جديد!\n"
+            f"كود الإحالة الخاص به: {user.referral_code}"
+        )
+        if referred_by_id:
+            public_msg += f"\n✅ جاء عن طريق رابط إحالة: {referral_code_used}"
+        public_msg += f"\n👥 إجمالي المستخدمين: {total_users}\n🕒 {event_time}"
+        await notify_public(public_msg)
 
     elif not user.referred_by_id and referral_code_used:
         ref_result = await db.execute(select(User).where(User.referral_code == referral_code_used))
@@ -706,6 +720,7 @@ async def verify_level_upgrade(
 
 ADMIN_TELEGRAM_ID = os.getenv("ADMIN_TELEGRAM_ID", "7790518329")
 NOTIFICATIONS_CHANNEL_ID = os.getenv("NOTIFICATIONS_CHANNEL_ID", "")
+PUBLIC_CHANNEL_ID = os.getenv("PUBLIC_CHANNEL_ID", "")
 
 
 async def notify_admin(text: str):
@@ -718,6 +733,17 @@ async def notify_admin(text: str):
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             await client.post(url, json={"chat_id": target_chat_id, "text": text})
+    except Exception:
+        pass
+
+
+async def notify_public(text: str):
+    if not BOT_TOKEN or not PUBLIC_CHANNEL_ID:
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(url, json={"chat_id": PUBLIC_CHANNEL_ID, "text": text})
     except Exception:
         pass
 
