@@ -710,6 +710,30 @@ async def verify_level_upgrade(
     )
     await notify_admin(upgrade_msg)
 
+    event_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    total_users_result = await db.execute(select(func.count()).select_from(User))
+    total_users = total_users_result.scalar()
+
+    public_upgrade_msg = (
+        f"⬆️ ترقية مستوى جديدة!\n"
+        f"كود الإحالة: {user.referral_code}\n"
+        f"المستوى الجديد: {user.level}\n"
+        f"👥 إجمالي المستخدمين: {total_users}\n"
+        f"🕒 {event_time}"
+    )
+    await notify_public(public_upgrade_msg)
+
+    if referral_bonus_zoro > 0 and user.referred_by_id:
+        referrer_for_msg = await db.get(User, user.referred_by_id)
+        if referrer_for_msg:
+            commission_msg = (
+                f"💰 مكافأة إحالة!\n"
+                f"كود الإحالة المستفيد: {referrer_for_msg.referral_code}\n"
+                f"حصل على 50% من قيمة ترقية أحد المُحالين ({referral_bonus_zoro} ZORO)\n"
+                f"🕒 {event_time}"
+            )
+            await notify_public(commission_msg)
+
     return {
         "ok": True,
         "new_level": user.level,
@@ -1165,8 +1189,3 @@ async def register_referral(
     }
     user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
     return {"ok": True, "referred_by_id": user.referred_by_id}
-
-
-@app.get("/api/debug/public-channel-check")
-async def debug_public_channel_check():
-    return {"PUBLIC_CHANNEL_ID": PUBLIC_CHANNEL_ID, "is_set": bool(PUBLIC_CHANNEL_ID)}
