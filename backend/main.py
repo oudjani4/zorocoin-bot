@@ -1142,3 +1142,24 @@ async def register_referral(
     }
     user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
     return {"ok": True, "referred_by_id": user.referred_by_id}
+
+
+@app.get("/api/debug/check-user/{telegram_id}")
+async def debug_check_user(telegram_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.telegram_id == telegram_id))
+    u = result.scalar_one_or_none()
+    if not u:
+        return {"found": False}
+    referrer = None
+    if u.referred_by_id:
+        r = await db.get(User, u.referred_by_id)
+        if r:
+            referrer = {"telegram_id": r.telegram_id, "holding_balance": r.holding_balance}
+    return {
+        "found": True,
+        "telegram_id": u.telegram_id,
+        "level": u.level,
+        "referred_by_id": u.referred_by_id,
+        "referrer": referrer,
+        "holding_balance": u.holding_balance,
+    }

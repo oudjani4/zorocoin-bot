@@ -1,6 +1,6 @@
 nohup: ignoring input
 Traceback (most recent call last):
-  File "/data/data/com.termux/files/home/zoro-project/bot/bot.py", line 295, in <module>
+  File "/data/data/com.termux/files/home/zoro-project/bot/bot.py", line 299, in <module>
     asyncio.run(main())
     ~~~~~~~~~~~^^^^^^^^
   File "/data/data/com.termux/files/usr/lib/python3.14/asyncio/runners.py", line 205, in run
@@ -12,6 +12,6 @@ Traceback (most recent call last):
   File "/data/data/com.termux/files/usr/lib/python3.14/asyncio/base_events.py", line 719, in run_until_complete
     return future.result()
            ~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/zoro-project/bot/bot.py", line 286, in main
+  File "/data/data/com.termux/files/home/zoro-project/bot/bot.py", line 290, in main
     raise RuntimeError(f"Invalid BOT_TOKEN: {me}")
 RuntimeError: Invalid BOT_TOKEN: {'ok': False, 'error_code': 401, 'description': 'Unauthorized'}
