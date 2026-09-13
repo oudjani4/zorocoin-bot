@@ -1158,3 +1158,11 @@ async def debug_find_user(telegram_id: int, db: AsyncSession = Depends(get_db)):
             for u in all_matches
         ],
     }
+
+
+@app.get("/api/debug/notif-config")
+async def debug_notif_config():
+    return {
+        "NOTIFICATIONS_CHANNEL_ID": NOTIFICATIONS_CHANNEL_ID,
+        "ADMIN_TELEGRAM_ID": ADMIN_TELEGRAM_ID,
+    }
