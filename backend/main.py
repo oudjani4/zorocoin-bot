@@ -1165,3 +1165,8 @@ async def register_referral(
     }
     user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
     return {"ok": True, "referred_by_id": user.referred_by_id}
+
+
+@app.get("/api/debug/public-channel-check")
+async def debug_public_channel_check():
+    return {"PUBLIC_CHANNEL_ID": PUBLIC_CHANNEL_ID, "is_set": bool(PUBLIC_CHANNEL_ID)}
