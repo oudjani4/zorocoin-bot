@@ -1163,3 +1163,27 @@ async def debug_check_user(telegram_id: int, db: AsyncSession = Depends(get_db))
         "referrer": referrer,
         "holding_balance": u.holding_balance,
     }
+
+
+@app.get("/api/debug/pending-upgrades/{telegram_id}")
+async def debug_pending_upgrades(telegram_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.telegram_id == telegram_id))
+    u = result.scalar_one_or_none()
+    if not u:
+        return {"found": False}
+    pu_result = await db.execute(select(PendingLevelUpgrade).where(PendingLevelUpgrade.user_id == u.id))
+    pending_upgrades = pu_result.scalars().all()
+    return {
+        "wallet_address": u.wallet_address,
+        "pending_upgrades": [
+            {
+                "nonce": p.nonce,
+                "to_level": p.to_level,
+                "price_ton": p.price_ton,
+                "processed": p.processed,
+                "created_at": p.created_at.isoformat(),
+                "expires_at": p.expires_at.isoformat(),
+            }
+            for p in pending_upgrades
+        ],
+    }
