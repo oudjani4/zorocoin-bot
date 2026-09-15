@@ -312,7 +312,11 @@ function handleTaskJoinClick(btn, taskId, channel, itemEl) {
     return;
   }
   if (channel === "MONETAG") {
-    handleMonetagTaskClick(btn, taskId, itemEl);
+    handleMonetagTaskClick(btn, taskId, itemEl, "int");
+    return;
+  }
+  if (channel === "MONETAG_POP") {
+    handleMonetagTaskClick(btn, taskId, itemEl, "pop");
     return;
   }
   const username = channel.replace("@", "").replace("https://t.me/", "");
@@ -337,9 +341,13 @@ async function handleAdsgramTaskClick(btn, taskId, itemEl) {
   }
 }
 
-async function handleMonetagTaskClick(btn, taskId, itemEl) {
+async function handleMonetagTaskClick(btn, taskId, itemEl, mode) {
   try {
-    await show_11804813();
+    if (mode === "pop") {
+      await show_11804813('pop');
+    } else {
+      await show_11804813();
+    }
     const result = await apiPost(`/api/claim-task/${taskId}`, {});
     tg.HapticFeedback?.notificationOccurred("success");
     flyCoinsToBalance(itemEl);
