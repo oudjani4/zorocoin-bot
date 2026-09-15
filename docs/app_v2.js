@@ -311,6 +311,10 @@ function handleTaskJoinClick(btn, taskId, channel, itemEl) {
     handleAdsgramTaskClick(btn, taskId, itemEl);
     return;
   }
+  if (channel === "MONETAG") {
+    handleMonetagTaskClick(btn, taskId, itemEl);
+    return;
+  }
   const username = channel.replace("@", "").replace("https://t.me/", "");
   tg.openTelegramLink(`https://t.me/${username}`);
 
@@ -323,6 +327,19 @@ async function handleAdsgramTaskClick(btn, taskId, itemEl) {
   try {
     const AdController = window.Adsgram.init({ blockId: "47927" });
     await AdController.show();
+    const result = await apiPost(`/api/claim-task/${taskId}`, {});
+    tg.HapticFeedback?.notificationOccurred("success");
+    flyCoinsToBalance(itemEl);
+    await refreshState();
+  } catch (e) {
+    tg.HapticFeedback?.notificationOccurred("error");
+    showError(e.message || "لم تكتمل مشاهدة الإعلان");
+  }
+}
+
+async function handleMonetagTaskClick(btn, taskId, itemEl) {
+  try {
+    await show_11804813();
     const result = await apiPost(`/api/claim-task/${taskId}`, {});
     tg.HapticFeedback?.notificationOccurred("success");
     flyCoinsToBalance(itemEl);
