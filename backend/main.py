@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -1189,3 +1189,34 @@ async def register_referral(
     }
     user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
     return {"ok": True, "referred_by_id": user.referred_by_id}
+
+
+# ==== AdsGram Reward Endpoint ====
+ADSGRAM_REWARD_AMOUNT = 5.0  # قد شحال Zoro كتزاد كل مشاهدة إعلان
+
+
+@app.get("/api/adsgram-reward")
+async def adsgram_reward(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    Reward URL ديال AdsGram.
+    AdsGram كيصيفط: GET /api/adsgram-reward?tgid=123456789
+    """
+    tgid = request.query_params.get("tgid")
+    if not tgid:
+        raise HTTPException(400, "Missing tgid")
+
+    try:
+        tgid_int = int(tgid)
+    except ValueError:
+        raise HTTPException(400, "Invalid tgid")
+
+    result = await db.execute(select(User).where(User.telegram_id == tgid_int))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    user.pool_balance += ADSGRAM_REWARD_AMOUNT
+    await db.commit()
+
+    return {"ok": True, "reward": ADSGRAM_REWARD_AMOUNT, "pool_balance": round(user.pool_balance, 4)}
