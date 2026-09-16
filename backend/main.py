@@ -805,6 +805,9 @@ async def request_withdraw(
     if not user.wallet_address:
         raise HTTPException(400, "You need to link your wallet first")
 
+    if user.level < 2:
+        raise HTTPException(400, "You need to upgrade to level 2 before you can withdraw")
+
     amount = payload.amount_zoro
     if amount <= 0:
         raise HTTPException(400, "Invalid amount")
