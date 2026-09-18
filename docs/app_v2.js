@@ -307,12 +307,55 @@ function renderTaskButtons() {
 
 // المرحلة 1: الضغط على "انضمام" بيفتح رابط القناة، وبيحول الزرار لـ "تحقق الآن".
 function handleTaskJoinClick(btn, taskId, channel, itemEl) {
+  if (channel === "ADSGRAM") {
+    handleAdsgramTaskClick(btn, taskId, itemEl);
+    return;
+  }
+  if (channel === "MONETAG") {
+    handleMonetagTaskClick(btn, taskId, itemEl, "int");
+    return;
+  }
+  if (channel === "MONETAG_POP") {
+    handleMonetagTaskClick(btn, taskId, itemEl, "pop");
+    return;
+  }
   const username = channel.replace("@", "").replace("https://t.me/", "");
   tg.openTelegramLink(`https://t.me/${username}`);
 
   btn.textContent = "تحقق الآن ✅";
   btn.classList.add("verify-mode");
   btn.onclick = () => handleTaskVerifyClick(taskId, itemEl);
+}
+
+async function handleAdsgramTaskClick(btn, taskId, itemEl) {
+  try {
+    const AdController = window.Adsgram.init({ blockId: "47927" });
+    await AdController.show();
+    const result = await apiPost(`/api/claim-task/${taskId}`, {});
+    tg.HapticFeedback?.notificationOccurred("success");
+    flyCoinsToBalance(itemEl);
+    await refreshState();
+  } catch (e) {
+    tg.HapticFeedback?.notificationOccurred("error");
+    showError(e.message || "لم تكتمل مشاهدة الإعلان");
+  }
+}
+
+async function handleMonetagTaskClick(btn, taskId, itemEl, mode) {
+  try {
+    if (mode === "pop") {
+      await show_11804813('pop');
+    } else {
+      await show_11804813();
+    }
+    const result = await apiPost(`/api/claim-task/${taskId}`, {});
+    tg.HapticFeedback?.notificationOccurred("success");
+    flyCoinsToBalance(itemEl);
+    await refreshState();
+  } catch (e) {
+    tg.HapticFeedback?.notificationOccurred("error");
+    showError(e.message || "لم تكتمل مشاهدة الإعلان");
+  }
 }
 
 // المرحلة 2: الضغط على "تحقق الآن" بيتحقق فعليًا من العضوية عبر السيرفر

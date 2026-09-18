@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import random
 import secrets
@@ -7,7 +8,7 @@ from datetime import datetime, timedelta
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -19,6 +20,9 @@ from models import User, RequiredTask, UserTaskCompletion, PendingLevelUpgrade, 
 from auth import get_current_telegram_user, verify_telegram_init_data
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("zoro")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 REQUIRED_CHANNELS_ENV = [c.strip() for c in os.getenv("REQUIRED_CHANNELS", "").split(",") if c.strip()]
@@ -747,29 +751,36 @@ NOTIFICATIONS_CHANNEL_ID = os.getenv("NOTIFICATIONS_CHANNEL_ID", "")
 PUBLIC_CHANNEL_ID = os.getenv("PUBLIC_CHANNEL_ID", "")
 
 
+async def _send_telegram_message(chat_id: str, text: str, label: str):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(url, json={"chat_id": chat_id, "text": text})
+            if resp.status_code == 200:
+                return
+            logger.error(f"[{label}] Telegram error {resp.status_code}: {resp.text}")
+        except Exception as e:
+            logger.error(f"[{label}] Exception on attempt {attempt+1}: {e}")
+    logger.error(f"[{label}] Failed to send message after retries. chat_id={chat_id}")
+
+
 async def notify_admin(text: str):
     if not BOT_TOKEN:
+        logger.warning("notify_admin skipped: BOT_TOKEN missing")
         return
     target_chat_id = NOTIFICATIONS_CHANNEL_ID or ADMIN_TELEGRAM_ID
     if not target_chat_id:
+        logger.warning("notify_admin skipped: no target_chat_id")
         return
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(url, json={"chat_id": target_chat_id, "text": text})
-    except Exception:
-        pass
+    await _send_telegram_message(target_chat_id, text, "notify_admin")
 
 
 async def notify_public(text: str):
     if not BOT_TOKEN or not PUBLIC_CHANNEL_ID:
+        logger.warning("notify_public skipped: missing BOT_TOKEN or PUBLIC_CHANNEL_ID")
         return
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(url, json={"chat_id": PUBLIC_CHANNEL_ID, "text": text})
-    except Exception:
-        pass
+    await _send_telegram_message(PUBLIC_CHANNEL_ID, text, "notify_public")
 
 
 class WithdrawPayload(BaseModel):
@@ -793,6 +804,9 @@ async def request_withdraw(
 
     if not user.wallet_address:
         raise HTTPException(400, "You need to link your wallet first")
+
+    if user.level < 2:
+        raise HTTPException(400, "You need to upgrade to level 2 before you can withdraw")
 
     amount = payload.amount_zoro
     if amount <= 0:
@@ -1189,3 +1203,34 @@ async def register_referral(
     }
     user = await get_or_create_user(db, tg_user, referral_code_used=payload.referral_code)
     return {"ok": True, "referred_by_id": user.referred_by_id}
+
+
+# ==== AdsGram Reward Endpoint ====
+ADSGRAM_REWARD_AMOUNT = 5.0  # قد شحال Zoro كتزاد كل مشاهدة إعلان
+
+
+@app.get("/api/adsgram-reward")
+async def adsgram_reward(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    Reward URL ديال AdsGram.
+    AdsGram كيصيفط: GET /api/adsgram-reward?tgid=123456789
+    """
+    tgid = request.query_params.get("tgid")
+    if not tgid:
+        raise HTTPException(400, "Missing tgid")
+
+    try:
+        tgid_int = int(tgid)
+    except ValueError:
+        raise HTTPException(400, "Invalid tgid")
+
+    result = await db.execute(select(User).where(User.telegram_id == tgid_int))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    user.pool_balance += ADSGRAM_REWARD_AMOUNT
+    await db.commit()
+
+    return {"ok": True, "reward": ADSGRAM_REWARD_AMOUNT, "pool_balance": round(user.pool_balance, 4)}
